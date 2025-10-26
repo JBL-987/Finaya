@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Menu, X, BarChart3 } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const Navbar_Component = ({isAuthenticated, logout}) => {
+const Navbar_Component = ({ isAuthenticated, logout }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => {
@@ -10,52 +10,71 @@ const Navbar_Component = ({isAuthenticated, logout}) => {
   };
 
   return (
-    <nav className="bg-white/90 backdrop-blur-md fixed w-full z-50 top-0 start-0 border-b border-gray-200 shadow-sm">
+    <nav className="bg-gray-900/90 backdrop-blur-md fixed w-full z-50 top-0 start-0 border-b border-yellow-400 shadow-sm">
       <div className="max-w-7xl flex flex-wrap items-center justify-between mx-auto p-4">
         <div className="flex items-center space-x-3 rtl:space-x-reverse">
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="p-2 bg-yellow-500 rounded-lg">
-              <BarChart3 className="h-5 w-5 text-white" />
-            </div>
-            <span className="self-center text-xl sm:text-2xl font-bold whitespace-nowrap text-gray-900">
-              Finaya
-            </span>
-          </Link>
+          <div className="flex items-center space-x-2">
+            <img
+              src="/Finaya_Logo.png"
+              alt="Finaya Logo"
+              className="h-10 w-10 sm:h-15 sm:w-15 object-contain"
+            />
+          </div>
         </div>
 
         <button
           onClick={toggleMobileMenu}
-          className="md:hidden text-gray-700 hover:text-yellow-600 focus:outline-none transition-colors p-2 rounded-lg hover:bg-gray-100"
+          className="md:hidden text-gray-300 hover:text-yellow-400 focus:outline-none transition-colors p-2 rounded-lg hover:bg-gray-800"
         >
           {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
 
+        {/* DESKTOP MENU */}
         <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
-          <a 
-            href="#features" 
-            className="text-gray-600 hover:text-yellow-600 transition-colors font-medium text-sm lg:text-base py-2"
-          >
-            Features
-          </a>
-          <a 
-            href="#how-it-works" 
-            className="text-gray-600 hover:text-yellow-600 transition-colors font-medium text-sm lg:text-base py-2"
-          >
-            How It Works
-          </a>
-          <a 
-            href="#countries" 
-            className="text-gray-600 hover:text-yellow-600 transition-colors font-medium text-sm lg:text-base py-2"
-          >
-            Coverage
-          </a>
-          <a 
-            href="#testimonials" 
-            className="text-gray-600 hover:text-yellow-600 transition-colors font-medium text-sm lg:text-base py-2"
-          >
-            Testimonials
-          </a>
-                  
+          {!isAuthenticated ? (
+            <>
+              <a
+                href="#features"
+                className="text-gray-300 hover:text-yellow-400 transition-colors font-medium text-sm lg:text-base py-2"
+              >
+                Features
+              </a>
+              <a
+                href="#how-it-works"
+                className="text-gray-300 hover:text-yellow-400 transition-colors font-medium text-sm lg:text-base py-2"
+              >
+                How It Works
+              </a>
+              <a
+                href="#countries"
+                className="text-gray-300 hover:text-yellow-400 transition-colors font-medium text-sm lg:text-base py-2"
+              >
+                Coverage
+              </a>
+              <a
+                href="#testimonials"
+                className="text-gray-300 hover:text-yellow-400 transition-colors font-medium text-sm lg:text-base py-2"
+              >
+                Testimonials
+              </a>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/app"
+                className="text-white hover:text-yellow-400 transition-colors font-semibold text-sm lg:text-base py-2"
+              >
+                Analysis
+              </Link>
+              <Link
+                to="/dashboard"
+                className="text-white hover:text-yellow-400 transition-colors font-semibold text-sm lg:text-base py-2"
+              >
+                Dashboard
+              </Link>
+            </>
+          )}
+
           {isAuthenticated && (
             <button
               onClick={logout}
@@ -66,39 +85,61 @@ const Navbar_Component = ({isAuthenticated, logout}) => {
           )}
         </div>
 
+        {/* MOBILE MENU */}
         {mobileMenuOpen && (
-          <div className="md:hidden w-full mt-4 bg-white rounded-lg p-6 border border-gray-200 shadow-lg">
+          <div className="md:hidden w-full mt-4 bg-gray-900 rounded-lg p-6 border border-gray-700 shadow-lg">
             <div className="flex flex-col space-y-4">
-              <a
-                href="#features"
-                className="text-gray-700 hover:text-yellow-600 transition-colors py-3 px-4 rounded-lg hover:bg-yellow-50 font-medium"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Features
-              </a>
-              <a
-                href="#how-it-works"
-                className="text-gray-700 hover:text-yellow-600 transition-colors py-3 px-4 rounded-lg hover:bg-yellow-50 font-medium"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                How It Works
-              </a>
-              <a
-                href="#countries"
-                className="text-gray-700 hover:text-yellow-600 transition-colors py-3 px-4 rounded-lg hover:bg-yellow-50 font-medium"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Coverage
-              </a>
-              <a
-                href="#testimonials"
-                className="text-gray-700 hover:text-yellow-600 transition-colors py-3 px-4 rounded-lg hover:bg-yellow-50 font-medium"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Testimonials
-              </a>
-              
-              <div className="border-t border-gray-200 pt-4 mt-2">
+              {!isAuthenticated ? (
+                <>
+                  <a
+                    href="#features"
+                    className="text-gray-300 hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Features
+                  </a>
+                  <a
+                    href="#how-it-works"
+                    className="text-gray-300 hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    How It Works
+                  </a>
+                  <a
+                    href="#countries"
+                    className="text-gray-300 hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Coverage
+                  </a>
+                  <a
+                    href="#testimonials"
+                    className="text-gray-300 hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-medium"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Testimonials
+                  </a>
+                </>
+              ) : (
+                <>
+                <Link
+                  to="/app"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-white hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-semibold"
+                >
+                  Analysis
+                </Link>
+                <Link
+                  to="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-white hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-semibold"
+                >
+                  Dashboard
+                </Link>
+                </>
+              )}
+
+              <div className="border-t border-gray-700 pt-4 mt-2">
                 {isAuthenticated && (
                   <button
                     onClick={() => {

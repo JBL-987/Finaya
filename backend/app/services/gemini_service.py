@@ -6,69 +6,107 @@ from fastapi import HTTPException
 from app.core.config import settings
 from app.schemas.schemas import AreaDistribution
 
-class GeminiService:
-    def __init__(self):
-        self.api_key = settings.GEMINI_API_KEY
-        self.model = settings.GEMINI_MODEL
-        self.base_url = "https://generativelanguage.googleapis.com/v1beta"
+NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/reverse"
 
-    async def analyze_location(self, location: str, business_type: str = "general") -> Dict[str, Any]:
-        """Analyze a specific location for business opportunities"""
-        prompt = f"""
-        Provide a comprehensive business analysis for {location}.
-        Include:
-        1. Market overview and demographics
-        2. Economic indicators
-        3. Business opportunities in {business_type}
-        4. Competition analysis
-        5. Risk factors
-        6. Recommendations
+# Constants for calculations
+JAKARTA_DENSITY = 16000  # people per sq km
+AVG_ROAD_WIDTH = 30  # meters
+VISITOR_RATE = 0.1  # 0.1%
+PURCHASE_RATE = 90  # 90%
+ERROR_ADJUSTMENT = 1.305  # 30.5% error adjustment
 
-        Format the response as JSON with clear sections.
-        """
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-        return await self.generate_analysis(prompt, location)
+async def reverse_geocode(lat: float, lon: float) -> str:
+    """
+    Reverse geocode coordinates to get location name using Nominatim API
 
-    async def generate_analysis(self, prompt: str, location: str) -> Dict[str, Any]:
-        """Generate business analysis using Gemini API"""
-        url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
+    Args:
+        lat: Latitude
+        lon: Longitude
 
-        payload = {
-            "contents": [{
-                "parts": [{
-                    "text": f"Analyze business opportunities in {location}. {prompt}"
-                }]
-            }]
+    Returns:
+        Location name string
+    """
+    try:
+        params = {
+            "format": "json",
+            "lat": lat,
+            "lon": lon,
+            "zoom": 16,
+            "addressdetails": 1
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, json=payload)
+        headers = {
+            "User-Agent": "Finaya/1.0"
+        }
 
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise Exception(f"Gemini API error: {response.status_code} - {response.text}")
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(NOMINATIM_BASE_URL, params=params, headers=headers)
 
-GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent"
+            if response.status_code != 200:
+                return f"{lat}, {lon}"
+
+            data = response.json()
+
+            if data and "display_name" in data:
+                # Extract the most relevant parts of the address
+                address = data.get("address", {})
+
+                # Try to build a nice location name
+                location_parts = []
+
+                # Add street name if available
+                if "road" in address:
+                    location_parts.append(address["road"])
+
+                # Add suburb/district if available
+                if "suburb" in address:
+                    location_parts.append(address["suburb"])
+                elif "village" in address:
+                    location_parts.append(address["village"])
+                elif "town" in address:
+                    location_parts.append(address["town"])
+
+                # Add city
+                if "city" in address:
+                    location_parts.append(address["city"])
+                elif "county" in address:
+                    location_parts.append(address["county"])
+
+                # Add state if available
+                if "state" in address:
+                    location_parts.append(address["state"])
+
+                if location_parts:
+                    return ", ".join(location_parts)
+                else:
+                    return data["display_name"].split(",")[0]  # Fallback to first part
+            else:
+                return f"{lat}, {lon}"
+
+    except Exception as e:
+        print(f"Geocoding error: {e}")
+        return f"{lat}, {lon}"
 
 async def analyze_location_image(image_base64: str, image_metadata: Dict[str, Any]) -> Tuple[AreaDistribution, str]:
     """
-    Analyze map screenshot using Gemini AI to determine area distributions
-    
+    Analyze map screenshot using OpenRouter Qwen AI to determine area distributions
+
     Args:
         image_base64: Base64 encoded image data
         image_metadata: Image dimensions and scale information
-    
+
     Returns:
         Tuple of (AreaDistribution, raw_response)
     """
-    
+
     prompt = f"""
 You are analyzing a map screenshot to determine area distributions for business location analysis.
 
 In this Leaflet map image, the colors represent:
 - Yellow: Main roads
-- White: Secondary roads  
+- White: Secondary roads
 - Brown/Chocolate: Buildings (residential/commercial)
 - Light Gray: Open spaces (parking, plazas)
 - Green: Vegetative open spaces (parks, trees)
@@ -77,7 +115,7 @@ In this Leaflet map image, the colors represent:
 Please analyze this image and provide the exact percentage distribution of these three categories:
 
 1. RESIDENTIAL AREA: All buildings (brown/chocolate colored areas)
-2. ROAD AREA: All roads (yellow and white colored areas) 
+2. ROAD AREA: All roads (yellow and white colored areas)
 3. OPEN SPACE AREA: All open spaces (light gray, green, and blue areas)
 
 Image dimensions: {image_metadata.get('width', 800)}x{image_metadata.get('height', 600)} pixels
@@ -91,64 +129,78 @@ open_space: XX%
 The three percentages must add up to 100%.
 """
 
+    # Convert base64 to data URL
+    image_data_url = f"data:image/png;base64,{image_base64}"
+
     request_body = {
-        "contents": [{
-            "parts": [
-                {"text": prompt},
-                {
-                    "inline_data": {
-                        "mime_type": "image/png",
-                        "data": image_base64
+        "model": settings.OPENROUTER_MODEL,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": prompt
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image_data_url
+                        }
                     }
-                }
-            ]
-        }],
-        "generationConfig": {
-            "temperature": 0.1,
-            "topK": 1,
-            "topP": 0.8,
-            "maxOutputTokens": 200,
-        }
+                ]
+            }
+        ],
+        "max_tokens": 200,
+        "temperature": 0.1
     }
-    
+
+    headers = {
+        "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+        "HTTP-Referer": "http://localhost:5174",
+        "X-Title": "Finaya",
+        "Content-Type": "application/json"
+    }
+
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f"{GEMINI_API_URL}?key={settings.GEMINI_API_KEY}",
-                json=request_body
+                OPENROUTER_API_URL,
+                json=request_body,
+                headers=headers
             )
-            
+
             if response.status_code != 200:
                 error_data = response.json()
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Gemini API Error: {error_data.get('error', {}).get('message', response.text)}"
+                    detail=f"OpenRouter API Error: {error_data.get('error', {}).get('message', response.text)}"
                 )
-            
+
             data = response.json()
-            
-            if not data.get("candidates") or not data["candidates"][0].get("content"):
+
+            if not data.get("choices") or not data["choices"][0].get("message"):
                 raise HTTPException(
                     status_code=500,
-                    detail="Invalid response format from Gemini AI"
+                    detail="Invalid response format from OpenRouter AI"
                 )
-            
-            analysis_text = data["candidates"][0]["content"]["parts"][0]["text"]
-            
+
+            analysis_text = data["choices"][0]["message"]["content"]
+
             # Parse the response to extract percentages
             area_distribution = parse_area_distribution(analysis_text)
-            
+
             return area_distribution, analysis_text
-            
+
     except httpx.TimeoutException:
         raise HTTPException(
             status_code=504,
-            detail="Gemini AI request timed out"
+            detail="OpenRouter AI request timed out"
         )
     except httpx.RequestError as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to connect to Gemini AI: {str(e)}"
+            detail=f"Failed to connect to OpenRouter AI: {str(e)}"
         )
     except Exception as e:
         raise HTTPException(
@@ -158,10 +210,10 @@ The three percentages must add up to 100%.
 
 def parse_area_distribution(response_text: str) -> AreaDistribution:
     """
-    Parse Gemini AI response to extract area distribution percentages
+    Parse Finaya AI response to extract area distribution percentages
     
     Args:
-        response_text: Raw response from Gemini AI
+        response_text: Raw response from Finaya AI
     
     Returns:
         AreaDistribution object with parsed percentages
@@ -224,3 +276,99 @@ def parse_area_distribution(response_text: str) -> AreaDistribution:
             status_code=500,
             detail=f"Failed to parse area distribution: {str(e)}"
         )
+
+async def calculate_business_metrics(area_distribution: AreaDistribution, business_params: Dict[str, Any], screenshot_metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Calculate business profitability metrics based on area distribution and business parameters
+    
+    Args:
+        area_distribution: AreaDistribution object from Gemini analysis
+        business_params: Business parameters (buildingWidth, operatingHours, productPrice)
+        screenshot_metadata: Screenshot metadata (width, height, scale)
+    
+    Returns:
+        Dict with calculated metrics
+    """
+    try:
+        # Extract business parameters
+        building_width = float(business_params.get('buildingWidth', 0))
+        operating_hours = float(business_params.get('operatingHours', 0))
+        product_price = float(business_params.get('productPrice', 0))
+
+        if not all([building_width, operating_hours, product_price]):
+            raise HTTPException(status_code=400, detail="Missing required business parameters")
+
+        # Calculate area from screenshot data
+        width = screenshot_metadata.get('width', 800)
+        height = screenshot_metadata.get('height', 600)
+        scale = screenshot_metadata.get('scale', 1.0)
+
+        # Apply error adjustment
+        adjusted_scale = scale * ERROR_ADJUSTMENT
+
+        # Calculate real dimensions in meters
+        width_meters = width * adjusted_scale
+        height_meters = height * adjusted_scale
+        area_sq_m = width_meters * height_meters
+        area_sq_km = area_sq_m / 1_000_000
+
+        # Extract percentages
+        residential = area_distribution.residential
+        road = area_distribution.road
+        open_space = area_distribution.open_space
+
+        # Step 7: Calculate Current Gross Local Population (CGLP)
+        cglp = JAKARTA_DENSITY * area_sq_km
+
+        # Step 8: Estimate population in residential areas
+        pops = cglp * (residential / 100)
+
+        # Step 8.1: Calculate road area
+        road_area_sqm = area_sq_m * (road / 100)
+
+        # Step 8.2: Calculate People Density on Road (PDR)
+        if road_area_sqm <= 0:
+            raise HTTPException(status_code=400, detail="Road area is zero or negative")
+        pdr = pops / road_area_sqm
+
+        # Step 9: Calculate Average Population Capitalization (APC)
+        apc = building_width * AVG_ROAD_WIDTH * pdr
+
+        # Step 10: Calculate Average Population Traffic (APT)
+        daily_seconds = operating_hours * 3600
+        apt = apc * daily_seconds
+
+        # Step 11: Calculate Visitor Capitalizations of Daily Traffic (VCDT)
+        vcdt = apt * (VISITOR_RATE / 100)
+
+        # Step 12: Calculate Total People-Purchase Daily (TPPD)
+        tppd = vcdt * (PURCHASE_RATE / 100)
+
+        # Step 13: Calculate revenue
+        daily_revenue = tppd * product_price
+        monthly_revenue = daily_revenue * 30
+        yearly_revenue = daily_revenue * 365
+
+        return {
+            "cglp": round(cglp),
+            "pops": round(pops),
+            "road_area_sqm": round(road_area_sqm),
+            "pdr": round(pdr, 6),
+            "apc": round(apc, 3),
+            "apt": round(apt),
+            "vcdt": round(vcdt),
+            "tppd": round(tppd),
+            "daily_revenue": round(daily_revenue),
+            "monthly_revenue": round(monthly_revenue),
+            "yearly_revenue": round(yearly_revenue),
+            "area_data": {
+                "width_meters": round(width_meters, 2),
+                "height_meters": round(height_meters, 2),
+                "area_sq_m": round(area_sq_m, 2),
+                "area_sq_km": round(area_sq_km, 6),
+                "adjusted_scale": round(adjusted_scale, 4)
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to calculate business metrics: {str(e)}")

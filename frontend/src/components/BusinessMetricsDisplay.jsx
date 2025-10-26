@@ -1,246 +1,266 @@
-import {
-  Users,
-  TrendingUp,
-  DollarSign,
-  Calculator,
-  Target,
-  Clock,
-  MapPin,
-  Building,
-  Route,
-  Activity
-} from 'lucide-react';
-import { formatCurrency } from '../services/currencies';
+import { TrendingUp, Users, DollarSign, MapPin, Clock, Building, Route, Activity, Calculator, Target } from 'lucide-react';
+import { formatCurrency, formatNumber, formatDecimal } from '../services/currencies';
 
 const BusinessMetricsDisplay = ({ analysisResults }) => {
-  if (!analysisResults?.metrics) return null;
+  if (!analysisResults || !analysisResults.metrics) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-400">No business metrics available</p>
+      </div>
+    );
+  }
 
-  const { metrics, areaDistribution, businessParams, locationData } = analysisResults;
+  const { metrics, businessParams } = analysisResults;
+  const currency = businessParams?.currency || 'IDR';
 
-  const formatNumber = (num) => {
-    return new Intl.NumberFormat('id-ID').format(Math.round(num));
-  };
-
-  const formatCurrencyAmount = (amount) => {
-    const currency = businessParams?.currency || 'IDR';
-    return formatCurrency(amount, currency);
-  };
-
-  const formatDecimal = (num, decimals = 3) => {
-    return parseFloat(num.toFixed(decimals));
-  };
-
-  const calculationSteps = [
+  const metricsData = [
     {
-      step: 7,
-      title: 'Current Gross Local Population (CGLP)',
-      formula: 'Population Density × Area',
-      calculation: `${formatNumber(locationData.populationDensityPerSqKm)} × ${locationData.areaSquareKm?.toFixed(4)}`,
-      result: formatNumber(metrics.cglp),
-      unit: 'people',
       icon: Users,
-      color: 'text-blue-400'
+      label: 'Daily Customers',
+      value: (metrics.tppd !== undefined ? metrics.tppd.toLocaleString() : '0'),
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-900/30',
+      borderColor: 'border-blue-800/30'
     },
     {
-      step: 8,
-      title: 'Real Population',
-      formula: 'CGLP × Residential Area %',
-      calculation: `${formatNumber(metrics.cglp)} × ${areaDistribution.residential}%`,
-      result: formatNumber(metrics.realPopulation),
-      unit: 'people',
-      icon: Building,
-      color: 'text-purple-400'
+      icon: DollarSign,
+      label: 'Daily Revenue',
+      value: (metrics.dailyRevenue !== undefined ? formatCurrency(metrics.dailyRevenue, currency) : '0'),
+      color: 'text-green-400',
+      bgColor: 'bg-green-900/30',
+      borderColor: 'border-green-800/30'
     },
     {
-      step: 8.1,
-      title: 'Road Area',
-      formula: 'Total Area × Road %',
-      calculation: `${(locationData.areaSquareKm * 1000000).toFixed(0)} × ${areaDistribution.road}%`,
-      result: formatNumber(metrics.roadAreaSqm),
-      unit: 'sqm',
-      icon: Route,
-      color: 'text-yellow-400'
-    },
-    {
-      step: 8.2,
-      title: 'People Density on Road (PDR)',
-      formula: 'Real Population ÷ Road Area',
-      calculation: `${formatNumber(metrics.realPopulation)} ÷ ${formatNumber(metrics.roadAreaSqm)}`,
-      result: formatDecimal(metrics.pdr, 6),
-      unit: 'people/sqm',
-      icon: Activity,
-      color: 'text-green-400'
-    },
-    {
-      step: 9,
-      title: 'Avg Population Capitalization (APC)',
-      formula: 'Building Width × Road Width × PDR',
-      calculation: `${businessParams.buildingWidth}m × 30m × ${formatDecimal(metrics.pdr, 6)}`,
-      result: formatDecimal(metrics.apc),
-      unit: 'people/second',
-      icon: Calculator,
-      color: 'text-orange-400'
-    },
-    {
-      step: 10,
-      title: 'Avg Population Traffic (APT)',
-      formula: 'Daily Seconds × APC',
-      calculation: `${businessParams.dailyOperatingHours * 3600}s × ${formatDecimal(metrics.apc)}`,
-      result: formatNumber(metrics.apt),
-      unit: 'people/day',
-      icon: Clock,
-      color: 'text-pink-400'
-    },
-    {
-      step: 11,
-      title: 'Visitor Capitalizations (VCDT)',
-      formula: 'Visitor Rate × APT',
-      calculation: `${businessParams.visitorRate}% × ${formatNumber(metrics.apt)}`,
-      result: formatNumber(metrics.vcdt),
-      unit: 'visitors/day',
-      icon: Target,
-      color: 'text-cyan-400'
-    },
-    {
-      step: 12,
-      title: 'Total People-Purchase Daily (TPPD)',
-      formula: 'Purchase Rate × VCDT',
-      calculation: `${businessParams.purchaseRate}% × ${formatNumber(metrics.vcdt)}`,
-      result: formatNumber(metrics.tppd),
-      unit: 'customers/day',
       icon: TrendingUp,
-      color: 'text-emerald-400'
+      label: 'Monthly Revenue',
+      value: (metrics.monthlyRevenue !== undefined ? formatCurrency(metrics.monthlyRevenue, currency) : '0'),
+      color: 'text-purple-400',
+      bgColor: 'bg-purple-900/30',
+      borderColor: 'border-purple-800/30'
+    },
+    {
+      icon: MapPin,
+      label: 'Area Analyzed',
+      value: `${metrics.area_data?.area_sq_km?.toFixed(4) || '0'} km²`,
+      color: 'text-orange-400',
+      bgColor: 'bg-orange-900/30',
+      borderColor: 'border-orange-800/30'
     }
   ];
 
   return (
     <div className="space-y-6">
-      {/* Revenue Summary */}
-      <div className="bg-gradient-to-r from-green-900/30 to-blue-900/30 rounded-xl border border-green-800/30 p-6">
-        <h3 className="text-xl font-semibold flex items-center text-white mb-4">
-          <DollarSign className="w-5 h-5 mr-2 text-green-400" />
-          Revenue Projections
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center p-4 bg-background/50 rounded-lg">
-            <div className="text-2xl font-bold text-green-400 mb-1">
-              {formatCurrencyAmount(metrics.dailyRevenue)}
+      {/* Key Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {metricsData.map((metric, index) => (
+          <div
+            key={index}
+            className={`${metric.bgColor} ${metric.borderColor} rounded-lg p-4 border`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <metric.icon className={`w-5 h-5 ${metric.color}`} />
+              <span className="text-xs text-gray-400 uppercase tracking-wide">
+                {metric.label}
+              </span>
             </div>
-            <div className="text-sm text-muted-foreground">Daily Revenue</div>
-            <div className="text-xs text-green-300 mt-1">
-              {formatNumber(metrics.tppd)} customers/day
-            </div>
-          </div>
-          <div className="text-center p-4 bg-background/50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-400 mb-1">
-              {formatCurrencyAmount(metrics.monthlyRevenue)}
-            </div>
-            <div className="text-sm text-muted-foreground">Monthly Revenue</div>
-            <div className="text-xs text-blue-300 mt-1">
-              30 days projection
+            <div className={`text-xl font-bold ${metric.color}`}>
+              {metric.value}
             </div>
           </div>
-          <div className="text-center p-4 bg-background/50 rounded-lg">
-            <div className="text-2xl font-bold text-purple-400 mb-1">
-              {formatCurrencyAmount(metrics.yearlyRevenue)}
+        ))}
+      </div>
+
+      {/* Detailed Metrics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Population Analysis */}
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <Users className="w-5 h-5 mr-2 text-blue-400" />
+            Population Analysis
+          </h3>
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-400">Current Gross Local Population:</span>
+              <span className="text-white font-medium">
+                {metrics.cglp?.toLocaleString() || '0'}
+              </span>
             </div>
-            <div className="text-sm text-muted-foreground">Yearly Revenue</div>
-            <div className="text-xs text-purple-300 mt-1">
-              365 days projection
+            <div className="flex justify-between">
+              <span className="text-gray-400">Population in Residential Areas:</span>
+              <span className="text-white font-medium">
+                {metrics.pops?.toLocaleString() || '0'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">People Density on Road:</span>
+              <span className="text-white font-medium">
+                {metrics.pdr?.toFixed(6) || '0'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Traffic Analysis */}
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <TrendingUp className="w-5 h-5 mr-2 text-green-400" />
+            Traffic Analysis
+          </h3>
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-400">Average Population Capitalization:</span>
+              <span className="text-white font-medium">
+                {metrics.apc?.toFixed(3) || '0'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Average Population Traffic:</span>
+              <span className="text-white font-medium">
+                {metrics.apt?.toLocaleString() || '0'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Visitor Capitalization:</span>
+              <span className="text-white font-medium">
+                {metrics.vcdt?.toLocaleString() || '0'}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Detailed Calculations */}
-      <div className="bg-card rounded-xl border border-border p-6">
-        <h3 className="text-xl font-semibold flex items-center text-card-foreground mb-6">
-          <Calculator className="w-5 h-5 mr-2 text-blue-400" />
-          Detailed Calculations
-        </h3>
-        
-        <div className="space-y-4">
-          {calculationSteps.map((step) => {
-            const Icon = step.icon;
-            return (
-              <div
-                key={step.step}
-                className="p-4 bg-background rounded-lg border border-border hover:border-accent transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-3 flex-1">
-                    <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-full">
-                      <Icon className={`w-4 h-4 ${step.color}`} />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="text-xs bg-blue-900/30 text-blue-300 px-2 py-1 rounded">
-                          Step {step.step}
-                        </span>
-                        <h4 className="font-medium text-card-foreground">{step.title}</h4>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        <span className="font-mono">{step.formula}</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {step.calculation}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right ml-4">
-                    <div className={`text-lg font-bold ${step.color}`}>
-                      {step.result}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {step.unit}
-                    </div>
-                  </div>
-                </div>
+      {/* Business Parameters */}
+      {businessParams && (
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <Building className="w-5 h-5 mr-2 text-yellow-400" />
+            Business Parameters
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="text-sm text-gray-400">Building Width</div>
+              <div className="text-lg font-medium text-white">
+                {businessParams.buildingWidth} m
               </div>
-            );
-          })}
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-gray-400">Operating Hours</div>
+              <div className="text-lg font-medium text-white">
+                {businessParams.operatingHours} hours
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-sm text-gray-400">Product Price</div>
+              <div className="text-lg font-medium text-white">
+                {formatCurrency(businessParams.productPrice, currency)}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Business Parameters Used */}
-      <div className="bg-card rounded-xl border border-border p-6">
-        <h3 className="text-xl font-semibold flex items-center text-card-foreground mb-4">
-          <MapPin className="w-5 h-5 mr-2 text-blue-400" />
-          Analysis Parameters
+      {/* Calculation Steps */}
+      <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+          <Calculator className="w-5 h-5 mr-2 text-indigo-400" />
+          Detailed Calculation Steps
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">Building Width:</span>
-            <div className="font-medium text-card-foreground">{businessParams.buildingWidth}m</div>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Operating Hours:</span>
-            <div className="font-medium text-card-foreground">{businessParams.dailyOperatingHours}h/day</div>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Visitor Rate:</span>
-            <div className="font-medium text-card-foreground">{businessParams.visitorRate}%</div>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Purchase Rate:</span>
-            <div className="font-medium text-card-foreground">{businessParams.purchaseRate}%</div>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Product Price:</span>
-            <div className="font-medium text-card-foreground">{formatCurrencyAmount(businessParams.productPrice)}</div>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Population Density:</span>
-            <div className="font-medium text-card-foreground">{formatNumber(businessParams.populationDensityPerSqKm)}/km²</div>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Analysis Area:</span>
-            <div className="font-medium text-card-foreground">{locationData.areaSquareKm?.toFixed(4)} km²</div>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Road Width (avg):</span>
-            <div className="font-medium text-card-foreground">30m</div>
-          </div>
+        <div className="space-y-4">
+          {[
+            {
+              step: 7,
+              title: 'Current Gross Local Population (CGLP)',
+              formula: 'Population Density × Area',
+              calculation: `${formatNumber(16000)} × ${analysisResults.locationData?.areaSquareKm?.toFixed(4) || '0'}`,
+              result: formatNumber(metrics.cglp),
+              unit: 'people',
+              icon: Users,
+              color: 'text-blue-400'
+            },
+            {
+              step: 8,
+              title: 'Real Population',
+              formula: 'CGLP × Residential Area %',
+              calculation: `${formatNumber(metrics.cglp)} × ${analysisResults.areaDistribution?.residential || 0}%`,
+              result: formatNumber(metrics.pops),
+              unit: 'people',
+              icon: Building,
+              color: 'text-purple-400'
+            },
+            {
+              step: 8.1,
+              title: 'Road Area',
+              formula: 'Total Area × Road %',
+              calculation: `${((analysisResults.locationData?.areaSquareKm || 0) * 1000000).toFixed(0)} × ${analysisResults.areaDistribution?.road || 0}%`,
+              result: formatNumber(metrics.road_area_sqm),
+              unit: 'sqm',
+              icon: Route,
+              color: 'text-yellow-400'
+            },
+            {
+              step: 8.2,
+              title: 'People Density on Road (PDR)',
+              formula: 'Real Population ÷ Road Area',
+              calculation: `${formatNumber(metrics.pops)} ÷ ${formatNumber(metrics.road_area_sqm)}`,
+              result: formatDecimal(metrics.pdr, 6),
+              unit: 'people/sqm',
+              icon: Activity,
+              color: 'text-green-400'
+            },
+            {
+              step: 9,
+              title: 'Avg Population Capitalization (APC)',
+              formula: 'Building Width × Road Width × PDR',
+              calculation: `${businessParams?.buildingWidth || 0}m × 30m × ${formatDecimal(metrics.pdr, 6)}`,
+              result: formatDecimal(metrics.apc, 3),
+              unit: 'people/second',
+              icon: Calculator,
+              color: 'text-orange-400'
+            },
+            {
+              step: 10,
+              title: 'Avg Population Traffic (APT)',
+              formula: 'Daily Seconds × APC',
+              calculation: `${(businessParams?.operatingHours || 0) * 3600}s × ${formatDecimal(metrics.apc, 3)}`,
+              result: formatNumber(metrics.apt),
+              unit: 'people/day',
+              icon: Clock,
+              color: 'text-pink-400'
+            },
+            {
+              step: 11,
+              title: 'Visitor Capitalizations (VCDT)',
+              formula: 'Visitor Rate × APT',
+              calculation: `0.1% × ${formatNumber(metrics.apt)}`,
+              result: formatNumber(metrics.vcdt),
+              unit: 'visitors/day',
+              icon: Target,
+              color: 'text-cyan-400'
+            },
+            {
+              step: 12,
+              title: 'Total People-Purchase Daily (TPPD)',
+              formula: 'Purchase Rate × VCDT',
+              calculation: `90% × ${formatNumber(metrics.vcdt)}`,
+              result: formatNumber(metrics.tppd),
+              unit: 'customers/day',
+              icon: TrendingUp,
+              color: 'text-emerald-400'
+            }
+          ].map((step) => (
+            <div key={step.step} className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center">
+                  <step.icon className={`w-5 h-5 mr-2 ${step.color}`} />
+                  <span className="text-white font-medium">Step {step.step}: {step.title}</span>
+                </div>
+                <span className="text-gray-400 text-sm">{step.unit}</span>
+              </div>
+              <div className="text-sm text-gray-400 mb-1">Formula: {step.formula}</div>
+              <div className="text-sm text-gray-300 mb-1">Calculation: {step.calculation}</div>
+              <div className={`text-lg font-bold ${step.color}`}>Result: {step.result}</div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

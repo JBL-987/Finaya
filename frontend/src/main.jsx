@@ -10,6 +10,8 @@ import Navbar_Component from "./components/Navbar";
 import Footer_Component from "./components/Footer";
 import App from "./pages/App";
 import Home from "./pages/Home";
+import UserDashboard from "./pages/UserDashboard";
+import { authAPI } from "./services/api";
 import "../index.css";
 
 function Main() {
@@ -26,26 +28,26 @@ function Main() {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('access_token');
+        console.log('Checking auth with token:', token ? 'exists' : 'none');
+        
         if (token) {
-          // Verify token with backend
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-
-          if (response.ok) {
-            const userData = await response.json();
+          // Verify token with backend using authAPI
+          const userData = await authAPI.getCurrentUser();
+          console.log('User data from API:', userData);
+          
+          if (userData) {
             setUser(userData);
             setIsAuthenticated(true);
+            console.log('User authenticated successfully');
           } else {
-            localStorage.removeItem('token');
+            console.log('No user data, removing token');
+            localStorage.removeItem('access_token');
           }
         }
       } catch (error) {
         console.error("Authentication check failed:", error);
-        localStorage.removeItem('token');
+        localStorage.removeItem('access_token');
       } finally {
         setIsInitializing(false);
       }
@@ -56,66 +58,39 @@ function Main() {
 
   const login = async (credentials) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams(credentials),
-      });
+      console.log('Attempting login for:', credentials.email);
+      const data = await authAPI.login(credentials.email, credentials.password);
+      console.log('Login successful, token received');
+      
+      setIsAuthenticated(true);
 
-      if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem('token', data.access_token);
-        setIsAuthenticated(true);
-
-        // Get user data
-        const userResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
-          headers: {
-            'Authorization': `Bearer ${data.access_token}`,
-          },
-        });
-
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          setUser(userData);
-        }
-
-        return { success: true };
-      } else {
-        const error = await response.json();
-        return { success: false, error: error.detail };
+      // Get user data
+      const userData = await authAPI.getCurrentUser();
+      console.log('User data after login:', userData);
+      
+      if (userData) {
+        setUser(userData);
       }
+
+      return { success: true };
     } catch (error) {
       console.error("Login failed:", error);
-      return { success: false, error: "Login failed" };
+      return { success: false, error: error.message || "Login failed" };
     }
   };
 
   const register = async (userData) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
-
-      if (response.ok) {
-        return { success: true };
-      } else {
-        const error = await response.json();
-        return { success: false, error: error.detail };
-      }
+      await authAPI.register(userData.email, userData.password, userData.fullName);
+      return { success: true };
     } catch (error) {
       console.error("Registration failed:", error);
-      return { success: false, error: "Registration failed" };
+      return { success: false, error: error.message || "Registration failed" };
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
+  const logout = async () => {
+    await authAPI.logout();
     setIsAuthenticated(false);
     setUser(null);
     window.location.href = "/";
@@ -161,6 +136,14 @@ function Main() {
                 logout={logout}
                 user={user}
               />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <UserDashboard />
             </ProtectedRoute>
           }
         />

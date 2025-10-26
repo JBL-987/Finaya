@@ -59,3 +59,48 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  /* Global border colors */
+  .border-gray-200,
+  .border-gray-300,
+  .border-gray-700,
+  .border-gray-800,
+  .border-gray-100,
+  .border-gray-400,
+  .border-gray-500,
+  .border-gray-600 {
+    border-color: #fbbf24 !important;
+  }
+
+  /* Password input styling */
+  input[type="password"] {
+    -webkit-text-security: disc;
+    color: #ffffff !important;
+  }
+
+  input[type="password"]::-webkit-text-field-decoration {
+    color: #ffffff !important;
+  }
+
+  input[type="password"]::-moz-text-field-decoration {
+    color: #ffffff !important;
+  }
+
+  /* Simple button hover effects */
+  button:hover {
+    transform: translateY(-1px) !important;
+  }
+
+  .hover\\:bg-yellow-600:hover {
+    background-color: #d97706 !important;
+  }
+
+  .hover\\:text-yellow-600:hover {
+    color: #d97706 !important;
+  }
+
+  .hover\\:border-yellow-600:hover {
+    border-color: #d97706 !important;
+  }
+}

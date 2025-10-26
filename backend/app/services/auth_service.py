@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
 from ..core.config import settings
+from ..core.database import get_supabase_client
 from ..schemas.schemas import UserCreate, User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -13,7 +13,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    """Hash a password"""
+    """Hash a password, ensuring max 72 bytes for bcrypt."""
+    password = password[:72]  # Truncate to 72 characters
     return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -38,14 +39,50 @@ def verify_token(token: str) -> Optional[str]:
     except JWTError:
         return None
 
-def authenticate_user(db: Session, email: str, password: str):
-    """Authenticate user credentials"""
-    # This would typically query the database
-    # For now, return None as we don't have user model implementation
-    return None
+async def authenticate_user(email: str, password: str):
+    """Authenticate user credentials using Supabase"""
+    supabase = get_supabase_client()
+    try:
+        # Query user by email
+        response = supabase.table('users').select('*').eq('email', email).execute()
+        if not response.data:
+            return None
 
-def create_user(db: Session, user: UserCreate):
-    """Create a new user"""
-    # This would typically create user in database
-    # For now, return None as we don't have user model implementation
-    return None
+        user_data = response.data[0]
+        if not verify_password(password, user_data['password_hash']):
+            return None
+
+        return user_data
+    except Exception as e:
+        print(f"Authentication error: {e}")
+        return None
+
+async def create_user(user: UserCreate):
+    """Create a new user in Supabase"""
+    supabase = get_supabase_client()
+    try:
+        user_data = {
+            'email': user.email,
+            'password_hash': get_password_hash(user.password),
+            'full_name': user.full_name,
+            'created_at': datetime.utcnow().isoformat(),
+            'is_active': True
+        }
+
+        response = supabase.table('users').insert(user_data).execute()
+        if response.data:
+            return response.data[0]
+        return None
+    except Exception as e:
+        print(f"User creation error: {e}")
+        return None
+
+async def get_user_by_email(email: str):
+    """Get user by email"""
+    supabase = get_supabase_client()
+    try:
+        response = supabase.table('users').select('*').eq('email', email).execute()
+        return response.data[0] if response.data else None
+    except Exception as e:
+        print(f"Get user error: {e}")
+        return None

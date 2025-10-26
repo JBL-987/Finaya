@@ -10,11 +10,11 @@ const api = axios.create({
   },
 });
 
-// Request interceptor - Add auth token
+// Request interceptor - add JWT from localStorage
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
+    const token = localStorage.getItem('access_token');
+    if (token && token.trim()) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -24,14 +24,12 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor - Handle errors
+// Response interceptor - handle errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      localStorage.removeItem('access_token');
       window.location.href = '/';
     }
     return Promise.reject(error);
@@ -50,31 +48,31 @@ export const authAPI = {
   },
 
   login: async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
-    const { access_token } = response.data;
-    
-    // Store token
-    localStorage.setItem('token', access_token);
-    
-    // Get user info
-    const userInfo = await authAPI.getCurrentUser();
-    localStorage.setItem('user', JSON.stringify(userInfo));
-    
+    const loginFormData = new URLSearchParams();
+    loginFormData.append('username', email);
+    loginFormData.append('password', password);
+    const response = await api.post('/auth/login', loginFormData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    // Store token in localStorage
+    if (response.data.access_token) {
+      localStorage.setItem('access_token', response.data.access_token);
+    }
     return response.data;
   },
 
   logout: async () => {
-    try {
-      await api.post('/auth/logout');
-    } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-    }
+    localStorage.removeItem('access_token');
   },
 
   getCurrentUser: async () => {
-    const response = await api.get('/auth/me');
-    return response.data;
+    try {
+      const response = await api.get('/auth/me');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get current user:', error);
+      return null;
+    }
   },
 };
 
@@ -89,9 +87,20 @@ export const analysisAPI = {
     return response.data;
   },
 
-  // Calculate complete analysis
+  // Calculate complete analysis (with auto-save)
   calculate: async (location, businessParams, screenshotBase64, screenshotMetadata) => {
     const response = await api.post('/analysis/calculate', {
+      location,
+      business_params: businessParams,
+      screenshot_base64: screenshotBase64,
+      screenshot_metadata: screenshotMetadata,
+    });
+    return response.data;
+  },
+
+  // Analyze only (without saving to database)
+  analyze: async (location, businessParams, screenshotBase64, screenshotMetadata) => {
+    const response = await api.post('/analysis/analyze', {
       location,
       business_params: businessParams,
       screenshot_base64: screenshotBase64,
@@ -132,57 +141,6 @@ export const analysisAPI = {
   },
 };
 
-// ============= Files API =============
-export const filesAPI = {
-  // Upload file
-  upload: async (file, analysisId = null) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (analysisId) {
-      formData.append('analysis_id', analysisId);
-    }
 
-    const response = await api.post('/files/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
-
-  // Get all files
-  getAll: async () => {
-    const response = await api.get('/files/');
-    return response.data;
-  },
-
-  // Get file info
-  getById: async (fileId) => {
-    const response = await api.get(`/files/${fileId}`);
-    return response.data;
-  },
-
-  // Download file
-  download: async (fileId, filename) => {
-    const response = await api.get(`/files/${fileId}/download`, {
-      responseType: 'blob',
-    });
-    
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  },
-
-  // Delete file
-  delete: async (fileId) => {
-    await api.delete(`/files/${fileId}`);
-  },
-};
 
 export default api;

@@ -1,34 +1,17 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from supabase import create_client, Client
 from .config import settings
 
-# Database URL - using PostgreSQL with asyncpg
-DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
-
-# Create engine
-engine = create_engine(DATABASE_URL)
-
-# Create SessionLocal class
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Create Base class
-Base = declarative_base()
-
-# Dependency to get DB session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 async def init_db():
-    """Initialize database"""
+    """Initialize Supabase connection"""
     try:
-        # Create tables
-        Base.metadata.create_all(bind=engine)
-        print("✅ Database tables created successfully")
+        response = supabase.table('users').select('*').limit(1).execute()
+        print("✅ Supabase connection established")
     except Exception as e:
-        print(f"❌ Database initialization failed: {e}")
+        print(f"❌ Supabase initialization failed: {e}")
         raise
+
+def get_supabase_client() -> Client:
+    """Get Supabase client instance"""
+    return supabase

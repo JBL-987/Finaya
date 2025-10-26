@@ -147,28 +147,42 @@ export const getCurrencyPlaceHolder = (code) => {
 
 export const formatCurrency = (amount, currencyCode, locale = 'en-US') => {
   const currency = CURRENCIES[currencyCode];
-  if (!currency) return `${amount} ${currencyCode}`;
-  
+  if (!currency) return `${amount || 0} ${currencyCode}`;
+
+  // Handle undefined, null, or NaN amounts
+  const safeAmount = (amount == null || isNaN(amount)) ? 0 : amount;
+
   try {
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currencyCode,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(amount);
+    }).format(safeAmount);
   } catch (error) {
     // Fallback formatting
-    return `${currency.symbol}${amount.toLocaleString()}`;
+    return `${currency.symbol}${safeAmount.toLocaleString()}`;
   }
 };
 
 export const searchCurrencies = (query) => {
   const searchTerm = query.toLowerCase();
-  return Object.entries(CURRENCIES).filter(([code, info]) => 
+  return Object.entries(CURRENCIES).filter(([code, info]) =>
     code.toLowerCase().includes(searchTerm) ||
     info.name.toLowerCase().includes(searchTerm) ||
     info.country.toLowerCase().includes(searchTerm)
   );
+};
+
+// Helper functions for formatting numbers
+export const formatNumber = (num) => {
+  if (num == null || isNaN(num)) return '0';
+  return num.toLocaleString();
+};
+
+export const formatDecimal = (num, decimals = 2) => {
+  if (num == null || isNaN(num)) return '0';
+  return num.toFixed(decimals);
 };
 
 export default CURRENCIES;

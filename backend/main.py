@@ -8,7 +8,6 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.api.v1.auth import router as auth_router
 from app.api.v1.analysis import router as analysis_router
-from app.api.v1.files import router as files_router
 from app.core.middleware import RequestLoggingMiddleware
 
 # Security
@@ -20,7 +19,7 @@ async def lifespan(app: FastAPI):
     # Startup
     print("🚀 Starting Finaya Backend...")
     await init_db()
-    print("✅ Database initialized")
+    print("✅ Supabase connection established")
     yield
     # Shutdown
     print("👋 Shutting down Finaya Backend...")
@@ -62,7 +61,6 @@ async def health_check():
 # API Routes
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(analysis_router, prefix="/api/v1/analysis", tags=["Analysis"])
-app.include_router(files_router, prefix="/api/v1/files", tags=["Files"])
 
 # Root endpoint
 @app.get("/")
