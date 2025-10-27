@@ -11,29 +11,31 @@ const ResultsPanel = ({
   if (!showResults || !analysisResults) return null;
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-sm border-t border-gray-700 p-3 sm:p-4 z-30 max-h-64 sm:max-h-80 overflow-y-auto shadow-lg">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-bold flex items-center text-white">
-          <TrendingUp className="h-5 w-5 mr-2 text-yellow-400" />
-          Profitability Analysis Results
-        </h3>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={onSave}
-            className="rounded-full bg-yellow-600 text-white border border-transparent transition-all duration-300 ease-out transform hover:scale-105 hover:bg-white hover:text-yellow-600 hover:border-yellow-600 flex items-center justify-center gap-2 px-4 py-2 font-medium shadow-lg hover:shadow-xl text-sm"
-            title="Save"
-          >
-            <Save className="h-4 w-4" />
-            <span>Save</span>
-          </button>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-          >
-            <X className="h-4 w-4 text-gray-400" />
-          </button>
-        </div>
-      </div>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold flex items-center text-white">
+              <TrendingUp className="h-6 w-6 mr-2 text-yellow-400" />
+              Profitability Analysis Results
+            </h3>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={onSave}
+                className="rounded-full bg-yellow-600 text-white border border-transparent transition-all duration-300 ease-out transform hover:scale-105 hover:bg-white hover:text-yellow-600 hover:border-yellow-600 flex items-center justify-center gap-2 px-4 py-2 font-medium shadow-lg hover:shadow-xl text-sm"
+                title="Save"
+              >
+                <Save className="h-4 w-4" />
+                <span>Save</span>
+              </button>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-400 hover:text-white" />
+              </button>
+            </div>
+          </div>
 
       {/* Main Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
@@ -132,6 +134,8 @@ const ResultsPanel = ({
           <div className="bg-gray-900 p-2 rounded border border-gray-600 text-center">
             <div className="text-gray-300">Open Space</div>
             <div className="text-white font-semibold">{analysisResults.areaDistribution?.openSpace || 'N/A'}%</div>
+          </div>
+        </div>
           </div>
         </div>
       </div>

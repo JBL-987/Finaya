@@ -25,10 +25,51 @@ const redMarkerIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-const MapComponent = ({ onLocationSelect, selectedLocation, onMapReady }) => {
+/**
+ * Calculates the appropriate zoom level for a map to display a given radius around a point.
+ * Uses the Web Mercator projection formula to determine zoom level.
+ *
+ * @param {number} latitude - Latitude of the center point in degrees (-90 to 90)
+ * @param {number} radiusMeters - Radius to display in meters (must be > 0)
+ * @param {number} mapWidthPx - Width of the map container in pixels (must be > 0)
+ * @returns {number} Zoom level between 10 and 18
+ */
+const calculateZoomFromRadius = (latitude, radiusMeters, mapWidthPx) => {
+  // Input validation
+  if (!radiusMeters || radiusMeters <= 0 || !mapWidthPx || mapWidthPx <= 0) {
+    return 12; // Default zoom for invalid inputs
+  }
+
+  // Validate latitude range
+  if (latitude < -90 || latitude > 90) {
+    console.warn('Invalid latitude provided to calculateZoomFromRadius:', latitude);
+    return 12;
+  }
+
+  try {
+    // Formula: zoom = log2((156543.03392 * cos(latitude) * mapWidthPx) / (2 * radiusMeters))
+    // This shows the diameter (2 * radius) across the map width
+    const cosLat = Math.cos(latitude * Math.PI / 180);
+    const zoom = Math.log2((156543.03392 * cosLat * mapWidthPx) / (2 * radiusMeters));
+
+    // Clamp zoom between reasonable bounds and handle edge cases
+    if (!isFinite(zoom)) {
+      console.warn('Calculated zoom is not finite, using default zoom');
+      return 12;
+    }
+
+    return Math.max(10, Math.min(18, Math.round(zoom)));
+  } catch (error) {
+    console.error('Error calculating zoom level:', error);
+    return 12; // Fallback to default zoom
+  }
+};
+
+const MapComponent = ({ onLocationSelect, selectedLocation, onMapReady, buildingWidth }) => {
   const [mapLoaded, setMapLoaded] = useState(false);
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const circleRef = useRef(null);
 
   // Initialize map
   useEffect(() => {
@@ -69,10 +110,15 @@ const MapComponent = ({ onLocationSelect, selectedLocation, onMapReady }) => {
 
         console.log('Creating Leaflet map...');
 
+        // Get dynamic map width
+        const mapWidthPx = container.offsetWidth || 800; // Fallback to 800 if container not ready
+
+        const zoomLevel = calculateZoomFromRadius(-6.2088, parseFloat(buildingWidth) || 0, mapWidthPx);
+
         // Create map with Jakarta as center
         const map = L.map(container, {
           center: [-6.2088, 106.8456], // Jakarta coordinates
-          zoom: 12,
+          zoom: zoomLevel,
           zoomControl: true,
           scrollWheelZoom: true,
           dragging: true
@@ -212,18 +258,24 @@ const MapComponent = ({ onLocationSelect, selectedLocation, onMapReady }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Update marker when selectedLocation changes
+  // Update marker and circle when selectedLocation or buildingWidth changes
   useEffect(() => {
     if (mapInstanceRef.current && selectedLocation) {
-      // Clear existing markers
+      // Clear existing markers and circles
       mapInstanceRef.current.eachLayer((layer) => {
-        if (layer instanceof L.Marker) {
+        if (layer instanceof L.Marker || layer instanceof L.Circle) {
           mapInstanceRef.current.removeLayer(layer);
         }
       });
 
-      // Fly to the location
-      mapInstanceRef.current.flyTo([selectedLocation.lat, selectedLocation.lng], 16, {
+      // Calculate appropriate zoom level for the building width radius
+      const radiusMeters = parseFloat(buildingWidth) || 0;
+      const mapSize = mapInstanceRef.current.getSize();
+      const mapWidthPx = (mapSize && mapSize.x > 0) ? mapSize.x : 800;
+      const zoomLevel = calculateZoomFromRadius(selectedLocation.lat, radiusMeters, mapWidthPx);
+
+      // Fly to the location with calculated zoom
+      mapInstanceRef.current.flyTo([selectedLocation.lat, selectedLocation.lng], zoomLevel, {
         animate: true,
         duration: 1.5
       });
@@ -233,8 +285,24 @@ const MapComponent = ({ onLocationSelect, selectedLocation, onMapReady }) => {
         .addTo(mapInstanceRef.current)
         .bindPopup(`📍 Selected Location<br/>Lat: ${selectedLocation.lat.toFixed(6)}<br/>Lng: ${selectedLocation.lng.toFixed(6)}`)
         .openPopup();
+
+      // Add circle overlay for radius visualization if radius > 0
+      if (radiusMeters > 0) {
+        try {
+          circleRef.current = L.circle([selectedLocation.lat, selectedLocation.lng], {
+            color: 'blue',
+            fillColor: 'blue',
+            fillOpacity: 0.1,
+            radius: radiusMeters,
+            weight: 2,
+            dashArray: '5, 5'
+          }).addTo(mapInstanceRef.current);
+        } catch (error) {
+          console.error('Error adding circle overlay:', error);
+        }
+      }
     }
-  }, [selectedLocation]);
+  }, [selectedLocation, buildingWidth]);
 
   return (
     <div className="w-full h-full relative min-h-[400px]">

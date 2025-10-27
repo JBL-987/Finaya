@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { MapPin, Play, Loader, Search } from 'lucide-react';
-import { CURRENCIES, getCurrencySymbol } from '../services/currencies';
+import { Loader, MapPin, Play, Search } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CURRENCIES, getCurrencySymbol } from "../services/currencies";
 
 const AnalysisForm = ({
   selectedLocation,
@@ -8,9 +8,9 @@ const AnalysisForm = ({
   onParamsChange,
   onAnalysis,
   isAnalyzing,
-  onLocationSelect
+  onLocationSelect,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -18,13 +18,13 @@ const AnalysisForm = ({
     onParamsChange({
       ...businessParams,
       currency: e.target.value,
-      productPrice: '' // Reset productPrice to avoid invalid values for new currency
+      productPrice: "", // Reset productPrice to avoid invalid values for new currency
     });
   };
 
   const getInputStep = (currencyCode) => {
-    const highDenominationCurrencies = ['IDR', 'VND', 'KRW', 'JPY'];
-    return highDenominationCurrencies.includes(currencyCode) ? '1000' : '0.01';
+    const highDenominationCurrencies = ["IDR", "VND", "KRW", "JPY"];
+    return highDenominationCurrencies.includes(currencyCode) ? "1000" : "0.01";
   };
 
   const searchLocations = async (query) => {
@@ -36,12 +36,14 @@ const AnalysisForm = ({
     setIsSearching(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          query
+        )}&limit=5&addressdetails=1`
       );
       const data = await response.json();
       setSearchResults(data);
     } catch (error) {
-      console.error('Search error:', error);
+      console.error("Search error:", error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -60,10 +62,10 @@ const AnalysisForm = ({
     const location = {
       lat: parseFloat(result.lat),
       lng: parseFloat(result.lon),
-      address: result.display_name
+      address: result.display_name,
     };
     onLocationSelect(location);
-    setSearchQuery('');
+    setSearchQuery("");
     setSearchResults([]);
   };
 
@@ -97,7 +99,7 @@ const AnalysisForm = ({
                     className="w-full text-left px-3 py-2 hover:bg-gray-700 border-b border-gray-700 last:border-b-0"
                   >
                     <div className="text-sm text-white font-medium">
-                      {result.display_name.split(',')[0]}
+                      {result.display_name.split(",")[0]}
                     </div>
                     <div className="text-xs text-gray-400">
                       {result.display_name}
@@ -123,7 +125,12 @@ const AnalysisForm = ({
             <input
               type="number"
               value={businessParams.buildingWidth}
-              onChange={(e) => onParamsChange({ ...businessParams, buildingWidth: e.target.value })}
+              onChange={(e) =>
+                onParamsChange({
+                  ...businessParams,
+                  buildingWidth: e.target.value,
+                })
+              }
               className="w-12 sm:w-16 px-1 sm:px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs sm:text-sm focus:ring-1 focus:ring-yellow-400 text-white placeholder-gray-400"
               placeholder="10"
             />
@@ -134,7 +141,12 @@ const AnalysisForm = ({
             <input
               type="number"
               value={businessParams.operatingHours}
-              onChange={(e) => onParamsChange({ ...businessParams, operatingHours: e.target.value })}
+              onChange={(e) =>
+                onParamsChange({
+                  ...businessParams,
+                  operatingHours: e.target.value,
+                })
+              }
               className="w-12 sm:w-16 px-1 sm:px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs sm:text-sm focus:ring-1 focus:ring-yellow-400 text-white placeholder-gray-400"
               placeholder="12"
             />
@@ -147,7 +159,7 @@ const AnalysisForm = ({
               onChange={handleCurrencyChange}
               className="w-16 sm:w-20 px-1 sm:px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs sm:text-sm focus:ring-1 focus:ring-yellow-400 text-white"
             >
-              {Object.keys(CURRENCIES).map(code => (
+              {Object.keys(CURRENCIES).map((code) => (
                 <option key={code} value={code}>
                   {code}
                 </option>
@@ -160,16 +172,29 @@ const AnalysisForm = ({
               type="number"
               step={getInputStep(businessParams.currency)}
               value={businessParams.productPrice}
-              onChange={(e) => onParamsChange({ ...businessParams, productPrice: e.target.value })}
+              onChange={(e) =>
+                onParamsChange({
+                  ...businessParams,
+                  productPrice: e.target.value,
+                })
+              }
               className="w-16 sm:w-20 px-1 sm:px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs sm:text-sm focus:ring-1 focus:ring-yellow-400 text-white placeholder-gray-400"
-              placeholder={CURRENCIES[businessParams.currency]?.placeholder || '0.00'}
+              placeholder={
+                CURRENCIES[businessParams.currency]?.placeholder || "0.00"
+              }
             />
           </div>
 
           {/* Action Buttons */}
           <button
             onClick={onAnalysis}
-            disabled={isAnalyzing || !selectedLocation || !businessParams.buildingWidth || !businessParams.operatingHours || !businessParams.productPrice}
+            disabled={
+              isAnalyzing ||
+              !selectedLocation ||
+              !businessParams.buildingWidth ||
+              !businessParams.operatingHours ||
+              !businessParams.productPrice
+            }
             className="rounded-full bg-yellow-600 text-white border border-transparent transition-all duration-300 ease-out transform hover:scale-105 hover:bg-white hover:text-yellow-600 hover:border-yellow-600 flex items-center justify-center gap-2 px-4 py-2 font-medium shadow-lg hover:shadow-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isAnalyzing ? (

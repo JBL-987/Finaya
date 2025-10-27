@@ -330,7 +330,7 @@ const BusinessAnalysisApp = () => {
       };
 
       await createAnalysis(analysisData);
-      
+
       await Swal.fire({
         icon: 'success',
         title: 'Analysis Saved!',
@@ -384,6 +384,7 @@ const BusinessAnalysisApp = () => {
                 onLocationSelect={handleLocationSelect}
                 selectedLocation={selectedLocation}
                 onMapReady={handleMapReady}
+                buildingWidth={businessParams.buildingWidth}
               />
             </div>
           </div>
