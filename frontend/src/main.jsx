@@ -11,6 +11,7 @@ import Footer_Component from "./components/Footer";
 import App from "./pages/App";
 import Home from "./pages/Home";
 import UserDashboard from "./pages/UserDashboard";
+import FinancialManagement from "./pages/FinancialManagement";
 import { authAPI } from "./services/api";
 import "../index.css";
 
@@ -144,6 +145,14 @@ function Main() {
           element={
             <ProtectedRoute>
               <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/financial-management"
+          element={
+            <ProtectedRoute>
+              <FinancialManagement />
             </ProtectedRoute>
           }
         />

@@ -71,7 +71,43 @@ async def create_user(user: UserCreate):
 
         response = supabase.table('users').insert(user_data).execute()
         if response.data:
-            return response.data[0]
+            user_obj = response.data[0]
+
+            # Create default financial goals for the new user
+            try:
+                # Set deadline to 1 year from now
+                deadline = (datetime.utcnow() + timedelta(days=365)).isoformat()
+
+                default_goals = [
+                    {
+                        'user_id': user_obj['id'],
+                        'name': 'Emergency Fund',
+                        'target_amount': 6000.0,  # 6 months of expenses
+                        'current_amount': 0.0,
+                        'deadline': deadline
+                    },
+                    {
+                        'user_id': user_obj['id'],
+                        'name': 'Savings Rate Target',
+                        'target_amount': 20.0,  # 20% savings rate
+                        'current_amount': 0.0,
+                        'deadline': deadline
+                    },
+                    {
+                        'user_id': user_obj['id'],
+                        'name': 'Debt Reduction',
+                        'target_amount': 0.0,  # Target to reduce debt to zero
+                        'current_amount': 0.0,
+                        'deadline': deadline
+                    }
+                ]
+
+                supabase.table('financial_goals').insert(default_goals).execute()
+                print(f"Created default financial goals for user {user_obj['id']}")
+            except Exception as goal_error:
+                print(f"Warning: Could not create default goals for user {user_obj['id']}: {goal_error}")
+
+            return user_obj
         return None
     except Exception as e:
         print(f"User creation error: {e}")

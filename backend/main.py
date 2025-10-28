@@ -8,6 +8,9 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.api.v1.auth import router as auth_router
 from app.api.v1.analysis import router as analysis_router
+from app.api.v1.accounting import router as accounting_router
+from app.api.v1.advisor import router as advisor_router
+from app.api.v1.document import router as document_router
 from app.core.middleware import RequestLoggingMiddleware
 
 # Security
@@ -16,13 +19,16 @@ security = HTTPBearer()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
-    # Startup
     print("🚀 Starting Finaya Backend...")
-    await init_db()
-    print("✅ Supabase connection established")
+
+    try:
+        await init_db()
+    except Exception as e:
+        print(f"⚠️ Warning: Supabase init failed during startup: {e}")
+
     yield
-    # Shutdown
     print("👋 Shutting down Finaya Backend...")
+
 
 # Create FastAPI application
 app = FastAPI(
@@ -61,6 +67,9 @@ async def health_check():
 # API Routes
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(analysis_router, prefix="/api/v1/analysis", tags=["Analysis"])
+app.include_router(accounting_router, prefix="/api/v1/accounting", tags=["Accounting"])
+app.include_router(advisor_router, prefix="/api/v1/advisor", tags=["Advisor"])
+app.include_router(document_router, prefix="/api/v1/document", tags=["Document"])
 
 # Root endpoint
 @app.get("/")

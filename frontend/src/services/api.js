@@ -141,6 +141,94 @@ export const analysisAPI = {
   },
 };
 
+// ============= Accounting API =============
+export const accountingAPI = {
+  // Create transaction
+  createTransaction: async (transactionData) => {
+    const response = await api.post('/accounting/transactions', transactionData);
+    return response.data;
+  },
+
+  // Get all transactions
+  getTransactions: async () => {
+    const response = await api.get('/accounting/transactions');
+    return response.data;
+  },
+
+  // Get transaction by ID
+  getTransaction: async (transactionId) => {
+    const response = await api.get(`/accounting/transactions/${transactionId}`);
+    return response.data;
+  },
+
+  // Update transaction
+  updateTransaction: async (transactionId, updateData) => {
+    const response = await api.put(`/accounting/transactions/${transactionId}`, updateData);
+    return response.data;
+  },
+
+  // Delete transaction
+  deleteTransaction: async (transactionId) => {
+    const response = await api.delete(`/accounting/transactions/${transactionId}`);
+    return response.data;
+  },
+
+  // Get accounting report
+  getReport: async () => {
+    const response = await api.get('/accounting/report');
+    return response.data;
+  },
+
+  // Get transactions by category
+  getTransactionsByCategory: async (category) => {
+    const response = await api.get(`/accounting/transactions/category/${category}`);
+    return response.data;
+  },
+};
+
+// ============= Advisor API =============
+export const advisorAPI = {
+  // Financial Goals
+  createGoal: async (goalData) => {
+    const response = await api.post('/advisor/goals', goalData);
+    return response.data;
+  },
+
+  getGoals: async () => {
+    const response = await api.get('/advisor/goals');
+    return response.data;
+  },
+
+  getGoal: async (goalId) => {
+    const response = await api.get(`/advisor/goals/${goalId}`);
+    return response.data;
+  },
+
+  updateGoal: async (goalId, updateData) => {
+    const response = await api.put(`/advisor/goals/${goalId}`, updateData);
+    return response.data;
+  },
+
+  deleteGoal: async (goalId) => {
+    const response = await api.delete(`/advisor/goals/${goalId}`);
+    return response.data;
+  },
+
+  // Investment Recommendations
+  getInvestmentRecommendations: async (userProfile) => {
+    const response = await api.post('/advisor/investments/recommendations', userProfile);
+    return response.data;
+  },
+
+  // Tax Strategy
+  getTaxStrategy: async (userIncome, userExpenses) => {
+    const response = await api.post('/advisor/tax/strategy', null, {
+      params: { user_income: userIncome, user_expenses: userExpenses }
+    });
+    return response.data;
+  },
+};
+
 
 
 export default api;

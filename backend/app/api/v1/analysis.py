@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from pydantic import BaseModel
 from ...schemas.schemas import AnalysisCreate, Analysis, User, AreaDistribution
 from ...services.analysis_service import AnalysisService
-from ...services.gemini_service import analyze_location_image, calculate_business_metrics, reverse_geocode
+from ...services.openrouter_service import analyze_location_image, calculate_business_metrics, reverse_geocode
 from .auth import get_current_user, get_current_user_optional
 
 router = APIRouter()
@@ -27,7 +27,7 @@ async def create_analysis(
     """Create a new analysis"""
     try:
         result = await analysis_service.create_analysis(analysis, current_user.id)
-        return result.model_dump()  # ✅ Convert to dict
+        return result.model_dump()  
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

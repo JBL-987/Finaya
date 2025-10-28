@@ -67,6 +67,12 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
                 Analysis
               </Link>
               <Link
+                to="/financial-management"
+                className="text-white hover:text-yellow-400 transition-colors font-semibold text-sm lg:text-base py-2"
+              >
+                Financial Management
+              </Link>
+              <Link
                 to="/dashboard"
                 className="text-white hover:text-yellow-400 transition-colors font-semibold text-sm lg:text-base py-2"
               >
@@ -128,6 +134,13 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
                   className="text-white hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-semibold"
                 >
                   Analysis
+                </Link>
+                <Link
+                  to="/financial-management"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-white hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-semibold"
+                >
+                  Financial Management
                 </Link>
                 <Link
                   to="/dashboard"

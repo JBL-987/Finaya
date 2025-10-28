@@ -56,3 +56,66 @@ class TokenData(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+# Accounting schemas
+class TransactionBase(BaseModel):
+    date: datetime
+    description: str
+    amount: float
+    category: str
+    type: str  # income or expense
+
+class TransactionCreate(TransactionBase):
+    user_id: int
+
+class Transaction(TransactionBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AccountingReport(BaseModel):
+    total_income: float
+    total_expense: float
+    net_profit: float
+    transactions: List[Transaction]
+
+# Advisor schemas
+class FinancialGoal(BaseModel):
+    name: str
+    target_amount: float
+    current_amount: float
+    deadline: datetime
+
+class InvestmentRecommendation(BaseModel):
+    type: str
+    name: str
+    risk_level: str
+    expected_return: float
+    description: str
+
+class TaxStrategy(BaseModel):
+    deductions: List[str]
+    credits: List[str]
+    recommendations: List[str]
+
+# Document position schemas
+class DocumentPositionBase(BaseModel):
+    document_name: str
+    extraction_data: Dict[str, Any]
+    transaction_id: Optional[int] = None
+
+class DocumentPositionCreate(DocumentPositionBase):
+    user_id: int
+    transaction_id: Optional[int] = None
+
+class DocumentPosition(DocumentPositionBase):
+    id: int
+    user_id: int
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
