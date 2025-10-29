@@ -46,30 +46,6 @@ const DataInput = ({
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-white">Data Input</h1>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <input
-              type="number"
-              min="1"
-              max="100"
-              defaultValue="10"
-              id="fakeTransactionCount"
-              className="w-16 bg-gray-800 border border-gray-700 rounded-md py-1 px-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-            />
-            <button
-              onClick={() => {
-                const count =
-                  parseInt(document.getElementById("fakeTransactionCount").value) || 10;
-                onSaveManualData &&
-                  onSaveManualData({ generateFake: true, count: count });
-              }}
-              className="px-4 py-2 bg-gradient-to-r from-yellow-600 to-amber-500 text-white rounded-md hover:opacity-90 flex items-center text-sm"
-            >
-              Generate Fake Transactions
-            </button>
-          </div>
-          <span className="text-sm text-gray-400">Last updated: Today</span>
-        </div>
       </div>
 
       {/* Mode Toggle */}

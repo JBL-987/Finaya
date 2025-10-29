@@ -518,7 +518,7 @@ const ManualDataInput = ({ onSaveData }) => {
 
           <button
             type="submit"
-            className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-md hover:opacity-90 flex items-center"
+            className="px-6 py-2 bg-yellow-400 text-white rounded-md hover:opacity-90 flex items-center"
           >
             <Save size={16} className="mr-2" />
             Save Transaction
