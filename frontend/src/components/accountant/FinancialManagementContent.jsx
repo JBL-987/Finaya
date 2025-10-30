@@ -222,15 +222,24 @@ export default function FinancialManagementContent({
   const handleSaveManualData = async (manualData) => {
     addProcessingLog("Saving manual transaction data...", "info");
     try {
-      const response = await accountingAPI.createTransaction(manualData);
+      // Convert date to a full datetime string to match backend schema
+      const dataToSend = {
+        ...manualData,
+        date: new Date(manualData.date).toISOString(),
+        type: manualData.transactionType, // Match the 'type' field expected by the backend
+      };
+
+      const response = await accountingAPI.createTransaction(dataToSend);
       if (response.success) {
         addProcessingLog("Manual transaction saved successfully.", "success");
         await loadTransactions(); // Refresh transactions
+        return true; // Indicate success
       } else {
         throw new Error(response.detail || "Failed to save manual transaction.");
       }
     } catch (error) {
       addProcessingLog(`Failed to save manual data: ${error.message}`, "error");
+      return false; // Indicate failure
     }
   };
 
