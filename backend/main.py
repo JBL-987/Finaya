@@ -1,8 +1,11 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import uvicorn
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 
 from app.core.config import settings
 from app.core.database import init_db
@@ -12,6 +15,7 @@ from app.api.v1.accounting import router as accounting_router
 from app.api.v1.advisor import router as advisor_router
 from app.api.v1.document import router as document_router
 from app.core.middleware import RequestLoggingMiddleware
+from app.core.exceptions import FinayaException
 
 # Security
 security = HTTPBearer()
@@ -70,6 +74,85 @@ app.include_router(analysis_router, prefix="/api/v1/analysis", tags=["Analysis"]
 app.include_router(accounting_router, prefix="/api/v1/accounting", tags=["Accounting"])
 app.include_router(advisor_router, prefix="/api/v1/advisor", tags=["Advisor"])
 app.include_router(document_router, prefix="/api/v1/document", tags=["Document"])
+
+# Global Exception Handlers
+@app.exception_handler(FinayaException)
+async def finaya_exception_handler(request: Request, exc: FinayaException):
+    """Handle custom Finaya exceptions with structured responses"""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # Log the error with context
+    logger.error(
+        f"Finaya Exception - Code: {exc.error_code}, Message: {exc.message}, Context: {exc.context}, "
+        f"Details: {exc.details}"
+    )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=exc.to_dict()
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle Pydantic validation errors with detailed field information"""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # Extract field errors for better debugging
+    errors = []
+    for error in exc.errors():
+        field_path = ".".join(str(x) for x in error["loc"])
+        errors.append({
+            "field": field_path,
+            "message": error["msg"],
+            "type": error["type"]
+        })
+
+    error_message = "Request validation failed"
+    if errors:
+        error_message = f"Validation error in field '{errors[0]['field']}': {errors[0]['message']}"
+
+    logger.error(f"Request Validation Error: {exc.errors()}")
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": error_message,
+                "status_code": 422,
+                "context": "Request validation failed",
+                "details": {
+                    "validation_errors": errors
+                }
+            }
+        }
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle unexpected exceptions with basic error information"""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # Log the unexpected error
+    logger.error(f"Unexpected error: {type(exc).__name__}: {exc}", exc_info=True)
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": "An unexpected error occurred. Please try again later.",
+                "status_code": 500,
+                "context": "Internal server error",
+                "details": {
+                    "error_type": type(exc).__name__
+                }
+            }
+        }
+    )
 
 # Root endpoint
 @app.get("/")

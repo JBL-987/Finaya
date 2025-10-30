@@ -10,7 +10,7 @@ import ProgressPanel from './ProgressPanel';
 import ResultsPanel from './ResultsPanel';
 
 
-const BusinessAnalysisApp = () => {
+const BusinessAnalysisApp = ({ isAuthenticated, login, logout, user, addGlobalLog }) => {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [businessParams, setBusinessParams] = useState({
     buildingWidth: '',
@@ -140,41 +140,17 @@ const BusinessAnalysisApp = () => {
   const handleAnalysis = async () => {
     // Validate inputs
     if (!selectedLocation || !selectedLocation.lat || !selectedLocation.lng) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'Location Not Selected',
-        text: 'Please select a location on the map first',
-        confirmButtonText: 'OK',
-        background: '#ffffff',
-        color: '#1f2937',
-        confirmButtonColor: '#d97706'
-      });
+      addGlobalLog('Location not selected. Please select a location on the map first.', 'warning');
       return;
     }
 
     if (!businessParams.buildingWidth || !businessParams.operatingHours || !businessParams.productPrice) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'Incomplete Parameters',
-        text: 'Please fill all business parameters (building width, operating hours, price)',
-        confirmButtonText: 'OK',
-        background: '#ffffff',
-        color: '#1f2937',
-        confirmButtonColor: '#d97706'
-      });
+      addGlobalLog('Incomplete parameters. Please fill all business parameters (building width, operating hours, price).', 'warning');
       return;
     }
 
     if (!mapInstanceRef.current) {
-      await Swal.fire({
-        icon: 'info',
-        title: 'Map Not Ready',
-        text: 'Map is not ready yet. Please wait a moment and try again.',
-        confirmButtonText: 'OK',
-        background: '#ffffff',
-        color: '#1f2937',
-        confirmButtonColor: '#d97706'
-      });
+      addGlobalLog('Map not ready yet. Please wait a moment and try again.', 'info');
       return;
     }
 
@@ -259,29 +235,13 @@ const BusinessAnalysisApp = () => {
       setCurrentStep(3);
       setShowResults(true);
 
-      // Show success notification
-      await Swal.fire({
-        icon: 'success',
-        title: 'Analysis Successful!',
-        text: 'Business profitability analysis completed. Use the Save button to save results.',
-        timer: 2000,
-        showConfirmButton: false,
-        background: '#ffffff',
-        color: '#1f2937'
-      });
+      // Show success notification in logs
+      addGlobalLog('Business profitability analysis completed successfully. Use the Save button to save results.', 'success');
 
     } catch (error) {
       console.error('Analysis failed:', error);
 
-      await Swal.fire({
-        icon: 'error',
-        title: 'Analysis Failed',
-        text: `An error occurred during analysis: ${error.message}`,
-        confirmButtonText: 'OK',
-        background: '#ffffff',
-        color: '#1f2937',
-        confirmButtonColor: '#dc2626'
-      });
+      addGlobalLog(`Analysis failed: ${error.message}`, 'error');
 
       setCurrentStep(1);
     } finally {
@@ -308,14 +268,7 @@ const BusinessAnalysisApp = () => {
 
   const handleManualSave = async () => {
     if (!analysisResults) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'No Results to Save',
-        text: 'Please run an analysis first before saving.',
-        background: '#ffffff',
-        color: '#1f2937',
-        confirmButtonColor: '#d97706'
-      });
+      addGlobalLog('No results to save. Please run an analysis first before saving.', 'warning');
       return;
     }
 
@@ -331,25 +284,10 @@ const BusinessAnalysisApp = () => {
 
       await createAnalysis(analysisData);
 
-      await Swal.fire({
-        icon: 'success',
-        title: 'Analysis Saved!',
-        text: 'Your analysis has been saved successfully.',
-        timer: 2000,
-        showConfirmButton: false,
-        background: '#ffffff',
-        color: '#1f2937'
-      });
+      addGlobalLog('Analysis saved successfully!', 'success');
     } catch (error) {
       console.error('Manual save failed:', error);
-      await Swal.fire({
-        icon: 'error',
-        title: 'Save Failed',
-        text: `Failed to save analysis: ${error.message}`,
-        background: '#ffffff',
-        color: '#1f2937',
-        confirmButtonColor: '#dc2626'
-      });
+      addGlobalLog(`Save failed: ${error.message}`, 'error');
     }
   };
 

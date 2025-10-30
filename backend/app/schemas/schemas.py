@@ -64,9 +64,14 @@ class TransactionBase(BaseModel):
     amount: float
     category: str
     type: str  # income or expense
+    payment_method: Optional[str] = None
+    reference: Optional[str] = None
+    tax_deductible: Optional[bool] = False
+    notes: Optional[str] = None
+    line_items: Optional[List[Dict[str, Any]]] = None
 
 class TransactionCreate(TransactionBase):
-    user_id: int
+    pass  # user_id is provided by authentication, not in request body
 
 class Transaction(TransactionBase):
     id: int

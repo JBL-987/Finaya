@@ -20,7 +20,8 @@ import TaxStrategy from "../advisor/TaxStrategy";
 export default function FinancialManagementContent({
   activeMainCategory,
   activeSubTab,
-  onLoadTransactions
+  onLoadTransactions,
+  addGlobalLog
 }) {
   // State management
   const [files, setFiles] = useState([]);
@@ -442,6 +443,7 @@ export default function FinancialManagementContent({
                 errorMessage={errorMessage}
                 fileTransferProgress={fileTransferProgress}
                 onSaveManualData={handleSaveManualData}
+                addGlobalLog={addGlobalLog}
               />
             )}
 

@@ -31,14 +31,56 @@ const DataInput = ({
   errorMessage,
   fileTransferProgress,
   onSaveManualData,
+  addGlobalLog,
 }) => {
   const [inputMode, setInputMode] = useState("file");
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [selectMode, setSelectMode] = useState(false);
 
-  const handleSaveManualData = (data) => {
-    if (onSaveManualData) onSaveManualData(data);
-    else alert("Transaction saved successfully!");
+  const handleSaveManualData = async (data) => {
+    try {
+      const token = localStorage.getItem('token'); // Get JWT token from localStorage
+      const response = await fetch('/api/v1/accounting/transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          date: data.date,
+          description: data.description,
+          amount: data.amount,
+          category: data.category,
+          type: data.transactionType, // Map transactionType to type
+          // Additional fields that might be supported
+          payment_method: data.paymentMethod,
+          reference: data.reference,
+          tax_deductible: data.taxDeductible,
+          notes: data.notes,
+          line_items: data.lineItems,
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Transaction saved successfully:', result);
+        addGlobalLog('Transaction saved successfully!', 'success');
+
+        // Call parent callback if exists
+        if (onSaveManualData) onSaveManualData(data);
+
+        return true;
+      } else {
+        const errorData = await response.json();
+        console.error('Error saving transaction:', errorData);
+        addGlobalLog('Failed to save transaction: ' + (errorData.error?.message || JSON.stringify(errorData)), 'error');
+        return false;
+      }
+    } catch (error) {
+      console.error('Network error:', error);
+      addGlobalLog('Network error: ' + error.message, 'error');
+      return false;
+    }
   };
 
   return (

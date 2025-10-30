@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from ...schemas.schemas import AnalysisCreate, Analysis, User, AreaDistribution
 from ...services.analysis_service import AnalysisService
 from ...services.openrouter_service import analyze_location_image, calculate_business_metrics, reverse_geocode
+from ...core.exceptions import NotFoundError, ExternalServiceError, ValidationError, BusinessLogicError
 from .auth import get_current_user, get_current_user_optional
 
 router = APIRouter()
@@ -25,14 +26,8 @@ async def create_analysis(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new analysis"""
-    try:
-        result = await analysis_service.create_analysis(analysis, current_user.id)
-        return result.model_dump()  
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+    result = await analysis_service.create_analysis(analysis, current_user.id)
+    return result.model_dump()
 
 @router.get("/{analysis_id}", response_model=dict)
 async def get_analysis(
@@ -40,39 +35,25 @@ async def get_analysis(
     current_user: User = Depends(get_current_user)
 ):
     """Get analysis by ID"""
-    try:
-        result = await analysis_service.get_analysis(analysis_id, current_user.id)
-        
-        if not result:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Analysis not found"
-            )
-        
-        return result.model_dump()  # ✅ Convert to dict
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"ERROR in get_analysis: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Analysis not found"
+    result = await analysis_service.get_analysis(analysis_id, current_user.id)
+
+    if not result:
+        raise NotFoundError(
+            resource_type="Analysis",
+            resource_id=str(analysis_id),
+            context="Get analysis by ID",
+            details={"user_id": current_user.id}
         )
+
+    return result.model_dump()
 
 @router.get("/", response_model=List[dict])
 async def get_user_analyses(
     current_user: User = Depends(get_current_user)
 ):
     """Get all analyses for current user"""
-    try:
-        result = await analysis_service.get_user_analyses(current_user.id)
-        return [analysis.model_dump() for analysis in result] 
-    except Exception as e:
-        print(f"ERROR in get_user_analyses: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+    result = await analysis_service.get_user_analyses(current_user.id)
+    return [analysis.model_dump() for analysis in result]
 
 @router.post("/ai-analyze", response_model=Dict[str, Any])
 async def ai_analyze(
@@ -91,9 +72,12 @@ async def ai_analyze(
             "image_metadata": request.image_metadata
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+        raise ExternalServiceError(
+            service_name="OpenRouter AI",
+            operation="analyze_location_image",
+            message=f"AI analysis failed: {str(e)}",
+            context="AI-powered location analysis",
+            details={"request_data": {"image_size": len(request.image_base64), "metadata": request.image_metadata}}
         )
 
 @router.post("/calculate", response_model=Dict[str, Any])

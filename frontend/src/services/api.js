@@ -14,6 +14,10 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
+    console.log('🔑 Token being sent:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
+    console.log('📍 Request URL:', config.url);
+    console.log('📦 Request data:', config.data);
+    
     if (token && token.trim()) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -145,25 +149,48 @@ export const analysisAPI = {
 export const accountingAPI = {
   // Create transaction with optional file upload
   createTransaction: async (transactionData, file) => {
-    const formData = new FormData();
-
-    // Append transaction data as a JSON string blob
-    // This is a common way to send both JSON and a file
-    for (const key in transactionData) {
-      formData.append(key, transactionData[key]);
-    }
-
-    // Append file if it exists
+    // If there's a file, use FormData
     if (file) {
-      formData.append('file', file);
-    }
+      const formData = new FormData();
 
-    const response = await api.post('/accounting/transactions', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+      // Append transaction data
+      for (const key in transactionData) {
+        formData.append(key, transactionData[key]);
+      }
+
+      // Append file
+      formData.append('file', file);
+
+      const response = await api.post('/accounting/transactions', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    }
+  // If no file, send as JSON - FIX DI SINI
+  else {
+    // Pastikan data tidak kosong
+    const payload = {
+      transaction: {
+        type: transactionData.transactionType || transactionData.type,
+        date: transactionData.date,
+        amount: transactionData.amount,
+        description: transactionData.description,
+        category: transactionData.category,
+        payment_method: transactionData.paymentMethod,
+        reference: transactionData.reference,
+        tax_deductible: transactionData.taxDeductible,
+        notes: transactionData.notes,
+        line_items: transactionData.lineItems || []
+      }
+    };
+
+    console.log('💾 Sending payload:', payload); // Debug log
+
+    const response = await api.post('/accounting/transactions', payload);
     return response.data;
+  }
   },
 
   // Get all transactions

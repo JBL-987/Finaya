@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from typing import List, Dict, Any, Optional
 from ...schemas.schemas import TransactionCreate, Transaction, AccountingReport, User
 from ...services.accounting_service import AccountingService
+from ...core.exceptions import BusinessLogicError, NotFoundError, DatabaseError, ValidationError
 from .auth import get_current_user
 
 router = APIRouter()
@@ -9,28 +10,39 @@ accounting_service = AccountingService()
 
 @router.post("/transactions", response_model=Dict[str, Any])
 async def create_transaction(
-    transaction: TransactionCreate = Depends(),
-    file: Optional[UploadFile] = File(None),
+    transaction: TransactionCreate,
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new transaction with optional file upload for OCR"""
-    try:
-        if not file and not transaction.description:
-            raise HTTPException(
-                status_code=400,
-                detail="Either transaction data or a file for OCR must be provided.",
-            )
+    """Create a new transaction"""
+    result = await accounting_service.create_transaction(
+        transaction_data=transaction, user_id=current_user.id, file=None
+    )
+    if result:
+        return {"success": True, "transaction": result.model_dump()}
 
-        result = await accounting_service.create_transaction(
-            transaction_data=transaction, user_id=current_user.id, file=file
-        )
-        if result:
-            return {"success": True, "transaction": result.model_dump()}
-        raise HTTPException(status_code=400, detail="Failed to create transaction")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    raise DatabaseError(
+        message="Failed to create transaction",
+        operation="create_transaction",
+        context="Transaction creation"
+    )
+
+@router.post("/transactions/upload", response_model=Dict[str, Any])
+async def create_transaction_from_file(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a transaction by uploading a file (receipt, invoice, etc.) for OCR processing"""
+    result = await accounting_service.create_transaction(
+        transaction_data=None, user_id=current_user.id, file=file
+    )
+    if result:
+        return {"success": True, "transaction": result.model_dump()}
+
+    raise DatabaseError(
+        message="Failed to create transaction from file",
+        operation="create_transaction_from_file",
+        context="File-based transaction creation"
+    )
 
 @router.get("/transactions", response_model=List[Dict[str, Any]])
 async def get_user_transactions(

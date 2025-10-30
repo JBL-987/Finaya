@@ -5,7 +5,7 @@ import FinancialManagementSidebar from "../components/accountant/FinancialManage
 import FinancialManagementHeader from "../components/accountant/FinancialManagementHeader";
 import FinancialManagementContent from "../components/accountant/FinancialManagementContent";
 
-function FinancialManagement() {
+function FinancialManagement({ addGlobalLog }) {
   const [activeMainCategory, setActiveMainCategory] = useState("accountant");
   const [activeSubTab, setActiveSubTab] = useState("data-input");
 
@@ -39,6 +39,7 @@ function FinancialManagement() {
             activeMainCategory={activeMainCategory}
             activeSubTab={activeSubTab}
             onLoadTransactions={handleTransactionsLoaded}
+            addGlobalLog={addGlobalLog}
           />
         </div>
       </div>
