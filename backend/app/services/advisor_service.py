@@ -72,16 +72,24 @@ class AdvisorService:
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(self.openrouter_url, json=request_body, headers=headers)
-                if response.status_code == 200:
-                    data = response.json()
-                    content = data["choices"][0]["message"]["content"]
-                    # Parse JSON response
-                    import json
-                    recommendations = json.loads(content)
-                    return [InvestmentRecommendation(**rec) for rec in recommendations]
+                response = await client.post(
+                    self.openrouter_url, json=request_body, headers=headers
+                )
+                response.raise_for_status()
+                data = response.json()
+                content = data["choices"][0]["message"]["content"]
+                import json
+                recommendations = json.loads(content)
+                return [InvestmentRecommendation(**rec) for rec in recommendations]
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"OpenRouter API Error: {e.response.text}",
+            )
         except Exception as e:
-            print(f"Error getting investment recommendations: {e}")
+            raise HTTPException(
+                status_code=500, detail=f"Error getting investment recommendations: {e}"
+            )
 
         # Fallback recommendations
         return [
@@ -135,15 +143,22 @@ class AdvisorService:
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(self.openrouter_url, json=request_body, headers=headers)
-                if response.status_code == 200:
-                    data = response.json()
-                    content = data["choices"][0]["message"]["content"]
-                    import json
-                    strategy_data = json.loads(content)
-                    return TaxStrategy(**strategy_data)
+                response = await client.post(
+                    self.openrouter_url, json=request_body, headers=headers
+                )
+                response.raise_for_status()
+                data = response.json()
+                content = data["choices"][0]["message"]["content"]
+                import json
+                strategy_data = json.loads(content)
+                return TaxStrategy(**strategy_data)
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"OpenRouter API Error: {e.response.text}",
+            )
         except Exception as e:
-            print(f"Error getting tax strategy: {e}")
+            raise HTTPException(status_code=500, detail=f"Error getting tax strategy: {e}")
 
         # Fallback strategy
         return TaxStrategy(

@@ -13,7 +13,7 @@ import {
   FileText as FileTextIcon,
   File,
 } from "lucide-react";
-import CSVPreview from "./CSVpreview";
+import CSVPreview from "./CSVPreview";
 import ExcelPreview from "./ExcelPreview";
 import DocxPreview from "./DocxPreview";
 

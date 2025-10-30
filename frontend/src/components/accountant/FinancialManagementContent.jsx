@@ -122,27 +122,17 @@ export default function FinancialManagementContent({
 
   // File handling functions
   const handleFileUpload = async (file) => {
-    console.log("Uploading file:", file);
-    addProcessingLog(`Uploading file: ${file.name}`, "info");
-
+    addProcessingLog(`Uploading file: ${file.name} for OCR processing...`, "info");
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      // Here you would normally send to backend API
-      // For now, just add to files list
-      setFiles(prevFiles => [...prevFiles, {
-        id: Date.now(),
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        date: new Date().toISOString(),
-        status: 'uploaded'
-      }]);
-
-      addProcessingLog(`File uploaded successfully: ${file.name}`, "success");
+      const response = await accountingAPI.createTransaction({}, file);
+      if (response.success) {
+        addProcessingLog(`Successfully processed ${file.name} with OCR.`, "success");
+        await loadTransactions(); // Refresh transactions
+      } else {
+        throw new Error(response.detail || "Failed to process file with OCR.");
+      }
     } catch (error) {
-      addProcessingLog(`Failed to upload file: ${error.message}`, "error");
+      addProcessingLog(`Error processing file ${file.name}: ${error.message}`, "error");
     }
   };
 
@@ -230,26 +220,15 @@ export default function FinancialManagementContent({
   };
 
   const handleSaveManualData = async (manualData) => {
-    console.log("Saving manual data:", manualData);
-    addProcessingLog("Saving manual transaction data", "info");
-
+    addProcessingLog("Saving manual transaction data...", "info");
     try {
-      // Here you would save to backend API
-      // For now, just add to transactions
-      const newTransaction = {
-        id: Date.now(),
-        date: manualData.date,
-        description: manualData.description,
-        amount: manualData.amount,
-        category: manualData.category,
-        transactionType: manualData.transactionType,
-        sourceFile: "Manual Entry",
-        timestamp: new Date().toISOString()
-      };
-
-      setTransactions(prevTransactions => [...prevTransactions, newTransaction]);
-
-      addProcessingLog("Manual transaction saved successfully", "success");
+      const response = await accountingAPI.createTransaction(manualData);
+      if (response.success) {
+        addProcessingLog("Manual transaction saved successfully.", "success");
+        await loadTransactions(); // Refresh transactions
+      } else {
+        throw new Error(response.detail || "Failed to save manual transaction.");
+      }
     } catch (error) {
       addProcessingLog(`Failed to save manual data: ${error.message}`, "error");
     }
@@ -269,202 +248,38 @@ export default function FinancialManagementContent({
   };
 
   const handleDeleteTransaction = async (transactionId) => {
-    Swal.fire({
-      title: "Are you sure?",
-      text: "This transaction will be permanently deleted.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, delete it!",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          // Delete from backend API
-          const response = await accountingAPI.deleteTransaction(transactionId);
+    if (!confirm("Are you sure you want to delete this transaction?")) return;
 
-          if (response.success) {
-            // Find the transaction to be deleted (for notification)
-            const transactionToDelete = transactions.find(
-              (t) => t.id === transactionId
-            );
-            const transactionDesc = transactionToDelete
-              ? transactionToDelete.description ||
-                `${transactionToDelete.transactionType} transaction`
-              : "transaction";
-
-            // Update local state
-            setTransactions(prevTransactions =>
-              prevTransactions.filter((t) => t.id !== transactionId)
-            );
-
-            // Show success notification
-            import("../../utils/toastNotification.js").then(({ showToast }) => {
-              showToast(
-                `Transaction "${transactionDesc}" deleted successfully`,
-                "success"
-              );
-            });
-
-            // Add to processing log
-            addProcessingLog(`Deleted transaction: ${transactionDesc}`, "info");
-          } else {
-            throw new Error(response.message || "Failed to delete transaction");
-          }
-        } catch (error) {
-          console.error("Failed to delete transaction:", error);
-
-          // Show error toast
-          import("../../utils/toastNotification").then(({ showToast }) => {
-            showToast(
-              `Failed to delete transaction: ${error.message}`,
-              "error"
-            );
-          });
-
-          // Add to processing log
-          addProcessingLog(
-            `Failed to delete transaction: ${error.message}`,
-            "error"
-          );
-        }
-      }
-    });
+    addProcessingLog(`Deleting transaction ${transactionId}...`, "info");
+    try {
+      await accountingAPI.deleteTransaction(transactionId);
+      addProcessingLog(`Transaction ${transactionId} deleted successfully.`, "success");
+      await loadTransactions(); // Refresh transactions
+    } catch (error) {
+      addProcessingLog(`Failed to delete transaction ${transactionId}: ${error.message}`, "error");
+    }
   };
 
   const handleDeleteAllTransactions = async () => {
     if (transactions.length === 0) {
-      // Import and use the toast notification
-      import("../../utils/toastNotification").then(({ showToast }) => {
-        showToast("No transactions to delete", "info");
-      });
+      alert("No transactions to delete.");
+      return;
+    }
+    if (!confirm("Are you sure you want to delete ALL transactions? This cannot be undone.")) {
       return;
     }
 
-    Swal.fire({
-      title: "Delete All Transactions?",
-      text: "This will permanently delete ALL transactions. This action cannot be undone!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Yes, delete all!",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          // Get the count for the notification
-          const count = transactions.length;
-
-          // IMMEDIATELY show a loading dialog that can't be dismissed
-          Swal.fire({
-            title: "Deleting Transactions...",
-            html: `
-              <div class="text-center">
-                <div class="mb-3">Deleting ${count} transactions</div>
-                <div class="progress-bar-container" style="height: 10px; background-color: #333; border-radius: 5px; overflow: hidden;">
-                  <div id="delete-progress-bar" style="height: 100%; width: 0%; background-color: #dc3545; transition: width 0.3s;"></div>
-                </div>
-                <div id="delete-progress-text" class="mt-2">Starting deletion...</div>
-              </div>
-            `,
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            didOpen: () => {
-              const progressBar = document.getElementById(
-                "delete-progress-bar"
-              );
-              const progressText = document.getElementById(
-                "delete-progress-text"
-              );
-
-              // Start with animation to show it's working
-              progressBar.style.width = "5%";
-              progressText.textContent = "Preparing to delete...";
-            },
-          });
-
-          // Wait a moment to show the dialog
-          await new Promise((resolve) => setTimeout(resolve, 300));
-
-          const progressBar = document.getElementById("delete-progress-bar");
-          const progressText = document.getElementById("delete-progress-text");
-
-          // Delete all transactions from backend
-          const deletePromises = transactions.map(async (transaction) => {
-            try {
-              await accountingAPI.deleteTransaction(transaction.id);
-              return true;
-            } catch (error) {
-              console.error(`Failed to delete transaction ${transaction.id}:`, error);
-              return false;
-            }
-          });
-
-          // Process in batches to update the UI
-          const batchSize = 10;
-          const batches = Math.ceil(count / batchSize);
-
-          // Process in batches
-          for (let i = 0; i < batches; i++) {
-            const batch = deletePromises.slice(i * batchSize, (i + 1) * batchSize);
-            await Promise.all(batch);
-
-            // Update progress
-            const progress = 5 + Math.round(((i + 1) / batches) * 95);
-            progressBar.style.width = `${progress}%`;
-            progressText.textContent = `Deleting transactions (${Math.min(
-              (i + 1) * batchSize,
-              count
-            )}/${count})`;
-
-            // Small delay to keep UI responsive
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-
-          // Final update
-          progressBar.style.width = "100%";
-          progressText.textContent = `Deleted ${count} transactions successfully!`;
-
-          // Refresh transactions from backend
-          await loadTransactions();
-
-          // Close the loading dialog after a short delay
-          setTimeout(() => {
-            Swal.close();
-
-            // Show success notification
-            import("../../utils/toastNotification").then(({ showToast }) => {
-              showToast(
-                `Successfully deleted ${count} transactions`,
-                "success"
-              );
-            });
-          }, 1000);
-
-          // Add to processing log
-          addProcessingLog(
-            `Deleted ${count} transactions from database`,
-            "info"
-          );
-        } catch (error) {
-          console.error("Failed to delete all transactions:", error);
-
-          // Show error toast
-          import("../../utils/toastNotification").then(({ showToast }) => {
-            showToast(
-              `Failed to delete transactions: ${error.message}`,
-              "error"
-            );
-          });
-
-          // Add to processing log
-          addProcessingLog(
-            `Failed to delete transactions: ${error.message}`,
-            "error"
-          );
-        }
-      }
-    });
+    addProcessingLog("Deleting all transactions...", "info");
+    try {
+      const deletePromises = transactions.map((t) =>
+        accountingAPI.deleteTransaction(t.id)
+      );
+      await Promise.all(deletePromises);
+      addProcessingLog("All transactions deleted successfully.", "success");
+      await loadTransactions(); // Refresh transactions
+    } catch (error) {
+      addProcessingLog(`Failed to delete all transactions: ${error.message}`, "error");
+    }
   };
 
   const handleExportTransactions = () => {
@@ -566,84 +381,29 @@ export default function FinancialManagementContent({
     return uniqueTransactions;
   }
 
-  // Load transactions from backend API
   async function loadTransactions() {
+    setIsLoading(true);
     try {
-      console.log("Loading transactions from backend API...");
-      const response = await accountingAPI.getTransactions();
-      console.log("Transactions loaded from API:", response);
-
-      if (response.success && response.transactions && response.transactions.length > 0) {
-        console.log(`Setting ${response.transactions.length} transactions from API`);
-
-        // Format transactions to ensure they match our expected structure
-        const formattedTransactions = response.transactions.map((t) => ({
-          id: t.id,
-          transactionType: t.type,
-          amount: parseFloat(t.amount || "0"),
-          date: t.date || "",
-          description: t.description || "",
-          category: t.category || null,
-          paymentMethod: t.payment_method || null,
-          reference: t.reference || null,
-          taxDeductible: !!t.tax_deductible,
-          sourceFile: t.source_file || null,
-          timestamp: t.created_at || new Date().toISOString(),
-        }));
-
-        // Remove any duplicate transactions
-        const uniqueTransactions = removeDuplicateTransactions(formattedTransactions);
-
-        if (uniqueTransactions.length < formattedTransactions.length) {
-          console.log(
-            `Removed ${formattedTransactions.length - uniqueTransactions.length} duplicate transactions`
-          );
-        }
-
-        console.log("Formatted transactions:", uniqueTransactions);
-        setTransactions(uniqueTransactions);
-        onLoadTransactions?.(uniqueTransactions);
-      } else {
-        console.log("No transactions found in API");
-        setTransactions([]);
-        onLoadTransactions?.([]);
-      }
+      const data = await accountingAPI.getTransactions();
+      const formattedTransactions = data.map((t) => ({
+        id: t.id,
+        transactionType: t.type,
+        amount: parseFloat(t.amount || "0"),
+        date: t.date || "",
+        description: t.description || "",
+        category: t.category || "Uncategorized",
+        sourceFile: t.source_file || "Manual",
+        timestamp: t.created_at || new Date().toISOString(),
+      }));
+      const uniqueTransactions = removeDuplicateTransactions(formattedTransactions);
+      setTransactions(uniqueTransactions);
+      onLoadTransactions?.(uniqueTransactions);
     } catch (error) {
-      console.error("Failed to load transactions from API:", error);
-      addProcessingLog(
-        `Failed to load transactions from API: ${error.message}`,
-        "error"
-      );
-
-      // Fallback to localStorage if API fails
-      try {
-        console.log("Falling back to localStorage...");
-        const storedTransactions = JSON.parse(localStorage.getItem("transactions") || "[]");
-        if (storedTransactions && storedTransactions.length > 0) {
-          const formattedTransactions = storedTransactions.map((t) => ({
-            id: t.id,
-            transactionType: t.transactionType,
-            amount: typeof t.amount === "number" ? t.amount : parseFloat(t.amount || "0"),
-            date: t.date || "",
-            description: t.description || "",
-            category: t.category || null,
-            paymentMethod: t.paymentMethod || null,
-            reference: t.reference || null,
-            taxDeductible: !!t.taxDeductible,
-            sourceFile: t.sourceFile || null,
-            timestamp: t.timestamp || new Date().toISOString(),
-          }));
-
-          const uniqueTransactions = removeDuplicateTransactions(formattedTransactions);
-          setTransactions(uniqueTransactions);
-          onLoadTransactions?.(uniqueTransactions);
-          addProcessingLog("Loaded transactions from localStorage (fallback)", "info");
-        }
-      } catch (localError) {
-        console.error("Failed to load from localStorage:", localError);
-        setTransactions([]);
-        onLoadTransactions?.([]);
-      }
+      console.error("Failed to load transactions:", error);
+      addProcessingLog(`Failed to load transactions: ${error.message}`, "error");
+      setTransactions([]); // Clear transactions on error
+    } finally {
+      setIsLoading(false);
     }
   }
 

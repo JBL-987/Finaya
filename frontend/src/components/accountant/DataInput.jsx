@@ -121,7 +121,7 @@ const DataInput = ({
               Drag and drop your files here
             </p>
             <p className="mb-6 text-sm text-gray-400">or click to browse</p>
-            <input type="file" onChange={onFileUpload} className="hidden" id="fileInput" />
+            <input type="file" onChange={onFileUpload} className="hidden" id="fileInput" data-testid="file-upload" />
             <label
               htmlFor="fileInput"
               className="cursor-pointer rounded-lg bg-gradient-to-r from-yellow-600 to-amber-500 px-6 py-3 text-base font-medium text-white hover:opacity-90 transition-all"

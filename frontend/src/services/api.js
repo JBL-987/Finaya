@@ -143,9 +143,26 @@ export const analysisAPI = {
 
 // ============= Accounting API =============
 export const accountingAPI = {
-  // Create transaction
-  createTransaction: async (transactionData) => {
-    const response = await api.post('/accounting/transactions', transactionData);
+  // Create transaction with optional file upload
+  createTransaction: async (transactionData, file) => {
+    const formData = new FormData();
+
+    // Append transaction data as a JSON string blob
+    // This is a common way to send both JSON and a file
+    for (const key in transactionData) {
+      formData.append(key, transactionData[key]);
+    }
+
+    // Append file if it exists
+    if (file) {
+      formData.append('file', file);
+    }
+
+    const response = await api.post('/accounting/transactions', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 
@@ -222,8 +239,9 @@ export const advisorAPI = {
 
   // Tax Strategy
   getTaxStrategy: async (userIncome, userExpenses) => {
-    const response = await api.post('/advisor/tax/strategy', null, {
-      params: { user_income: userIncome, user_expenses: userExpenses }
+    const response = await api.post('/advisor/tax/strategy', {
+      user_income: userIncome,
+      user_expenses: userExpenses,
     });
     return response.data;
   },
