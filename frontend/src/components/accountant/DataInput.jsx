@@ -12,6 +12,7 @@ import {
   PlayCircle,
 } from "lucide-react";
 import ManualDataInput from "./ManualDataInput";
+import { Skeleton } from "../ui/Skeleton";
 
 const DataInput = ({
   onFileUpload,
@@ -176,9 +177,21 @@ const DataInput = ({
 
             {/* FIX: loading hanya muncul kalau ada file yang sedang di-load */}
             {isLoading && files.length > 0 ? (
-              <div className="py-12 text-center">
-                <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-yellow-900 border-t-yellow-500"></div>
-                <p className="mt-4 text-gray-400">Loading your files...</p>
+              <div className="space-y-4">
+                {[1,2,3].map((_, i) => (
+                  <div key={i} className="flex items-center space-x-4 p-4 rounded-lg border border-gray-700">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                    <div className="flex space-x-2">
+                      <Skeleton className="h-8 w-16" />
+                      <Skeleton className="h-8 w-16" />
+                      <Skeleton className="h-8 w-16" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : files.length === 0 ? (
               <div className="py-16 text-center">

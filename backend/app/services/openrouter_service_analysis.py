@@ -9,7 +9,7 @@ from app.schemas.schemas import AreaDistribution
 NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/reverse"
 
 # Constants for calculations
-JAKARTA_DENSITY = 16000  # people per sq km
+GLOBAL_AVERAGE_DENSITY = 4000  # people per sq km (global average)
 AVG_ROAD_WIDTH = 30  # meters
 VISITOR_RATE = 0.1  # 0.1%
 PURCHASE_RATE = 90  # 90%
@@ -221,54 +221,54 @@ def parse_area_distribution(response_text: str) -> AreaDistribution:
     percentages = {
         "residential": 0.0,
         "road": 0.0,
-        "open_space": 0.0
+        "openSpace": 0.0
     }
-    
+
     try:
         # Extract percentages using regex - try multiple patterns
         residential_match = re.search(r'residential:\s*(\d+(?:\.\d+)?)%', response_text, re.IGNORECASE) or \
                            re.search(r'residential.*?(\d+(?:\.\d+)?)%', response_text, re.IGNORECASE)
-        
+
         road_match = re.search(r'road:\s*(\d+(?:\.\d+)?)%', response_text, re.IGNORECASE) or \
                     re.search(r'road.*?(\d+(?:\.\d+)?)%', response_text, re.IGNORECASE)
-        
+
         open_space_match = re.search(r'open[_\s]space:\s*(\d+(?:\.\d+)?)%', response_text, re.IGNORECASE) or \
                           re.search(r'open[_\s]space.*?(\d+(?:\.\d+)?)%', response_text, re.IGNORECASE) or \
                           re.search(r'green.*?(\d+(?:\.\d+)?)%', response_text, re.IGNORECASE)
-        
+
         if residential_match:
             percentages["residential"] = float(residential_match.group(1))
         if road_match:
             percentages["road"] = float(road_match.group(1))
         if open_space_match:
-            percentages["open_space"] = float(open_space_match.group(1))
-        
+            percentages["openSpace"] = float(open_space_match.group(1))
+
         # If no matches found, try fallback extraction
-        if percentages["residential"] == 0 and percentages["road"] == 0 and percentages["open_space"] == 0:
+        if percentages["residential"] == 0 and percentages["road"] == 0 and percentages["openSpace"] == 0:
             all_numbers = re.findall(r'(\d+(?:\.\d+)?)%', response_text)
             if len(all_numbers) >= 3:
                 percentages["residential"] = float(all_numbers[0])
                 percentages["road"] = float(all_numbers[1])
-                percentages["open_space"] = float(all_numbers[2])
-        
+                percentages["openSpace"] = float(all_numbers[2])
+
         # Validate that percentages add up to ~100%
-        total = percentages["residential"] + percentages["road"] + percentages["open_space"]
-        
+        total = percentages["residential"] + percentages["road"] + percentages["openSpace"]
+
         # If percentages don't add up, normalize them
         if abs(total - 100) > 10 and total > 0:
             factor = 100 / total
             percentages["residential"] = round(percentages["residential"] * factor, 2)
             percentages["road"] = round(percentages["road"] * factor, 2)
-            percentages["open_space"] = round(percentages["open_space"] * factor, 2)
-        
+            percentages["openSpace"] = round(percentages["openSpace"] * factor, 2)
+
         # If still zero or invalid, use fallback Jakarta values
         if total == 0:
             percentages = {
                 "residential": 45.0,
                 "road": 25.0,
-                "open_space": 30.0
+                "openSpace": 30.0
             }
-        
+
         return AreaDistribution(**percentages)
         
     except Exception as e:
@@ -318,7 +318,7 @@ async def calculate_business_metrics(area_distribution: AreaDistribution, busine
         open_space = area_distribution.open_space
 
         # Step 7: Calculate Current Gross Local Population (CGLP)
-        cglp = JAKARTA_DENSITY * area_sq_km
+        cglp = GLOBAL_AVERAGE_DENSITY * area_sq_km
 
         # Step 8: Estimate population in residential areas
         pops = cglp * (residential / 100)
@@ -350,23 +350,23 @@ async def calculate_business_metrics(area_distribution: AreaDistribution, busine
         yearly_revenue = daily_revenue * 365
 
         return {
-            "cglp": round(cglp),
-            "pops": round(pops),
-            "road_area_sqm": round(road_area_sqm),
-            "pdr": round(pdr, 6),
-            "apc": round(apc, 3),
-            "apt": round(apt),
-            "vcdt": round(vcdt),
-            "tppd": round(tppd),
-            "daily_revenue": round(daily_revenue),
-            "monthly_revenue": round(monthly_revenue),
-            "yearly_revenue": round(yearly_revenue),
-            "area_data": {
-                "width_meters": round(width_meters, 2),
-                "height_meters": round(height_meters, 2),
-                "area_sq_m": round(area_sq_m, 2),
-                "area_sq_km": round(area_sq_km, 6),
-                "adjusted_scale": round(adjusted_scale, 4)
+            "cglp": round(cglp) if cglp == cglp else 0,  # Handle NaN
+            "pops": round(pops) if pops == pops else 0,
+            "roadAreaSqm": round(road_area_sqm) if road_area_sqm == road_area_sqm else 0,
+            "pdr": round(pdr, 6) if pdr == pdr else 0,
+            "apc": round(apc, 3) if apc == apc else 0,
+            "apt": round(apt) if apt == apt else 0,
+            "vcdt": round(vcdt) if vcdt == vcdt else 0,
+            "tppd": round(tppd) if tppd == tppd else 0,
+            "dailyRevenue": round(daily_revenue) if daily_revenue == daily_revenue else 0,
+            "monthlyRevenue": round(monthly_revenue) if monthly_revenue == monthly_revenue else 0,
+            "yearlyRevenue": round(yearly_revenue) if yearly_revenue == yearly_revenue else 0,
+            "areaData": {
+                "widthMeters": round(width_meters, 2) if width_meters == width_meters else 0,
+                "heightMeters": round(height_meters, 2) if height_meters == height_meters else 0,
+                "areaSqM": round(area_sq_m, 2) if area_sq_m == area_sq_m else 0,
+                "areaSqKm": round(area_sq_km, 6) if area_sq_km == area_sq_km else 0,
+                "adjustedScale": round(adjusted_scale, 4) if adjusted_scale == adjusted_scale else 0
             }
         }
 

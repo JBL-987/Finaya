@@ -10,12 +10,20 @@ class AccountingRepository(BaseRepository):
 
     def get_by_user_id(self, user_id: int) -> List[Dict[str, Any]]:
         """Get all transactions for a user"""
-        return self.get_all({"user_id": user_id})
+        try:
+            return self.get_all({"user_id": user_id})
+        except Exception as e:
+            print(f"Error getting transactions for user {user_id}: {e}")
+            return []  # Return empty list instead of crashing
 
     def create_transaction(self, transaction: TransactionCreate) -> Optional[Dict[str, Any]]:
         """Create a new transaction"""
-        data = transaction.dict()
-        return self.create(data)
+        try:
+            data = transaction.dict()
+            return self.create(data)
+        except Exception as e:
+            print(f"Error creating transaction: {e}")
+            return None
 
     def get_transaction_by_id(self, transaction_id: int) -> Optional[Dict[str, Any]]:
         """Get transaction by ID"""

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Skeleton } from "../ui/Skeleton";
 import { FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -115,8 +116,8 @@ const ExcelPreview = ({ url }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-        <span className="ml-2 text-gray-600">Loading Excel data...</span>
+        <Skeleton className="h-8 w-8 rounded-full" />
+        <Skeleton className="h-3 w-32 ml-2" />
       </div>
     );
   }

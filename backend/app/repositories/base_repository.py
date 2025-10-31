@@ -41,12 +41,12 @@ class BaseRepository(ABC):
         """Get all records with optional filters"""
         try:
             query = self.supabase.table(self.table_name).select('*')
-            
+
             if filters:
                 for field, value in filters.items():
                     query = query.eq(field, value)
-            
-            response = query.limit(limit).offset(offset).execute()
+
+            response = query.range(offset, offset + limit - 1).execute()
             return response.data or []
         except Exception as e:
             raise Exception(f"Failed to get {self.table_name} records: {str(e)}")

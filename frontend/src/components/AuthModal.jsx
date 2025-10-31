@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 const AuthModal = ({ isOpen, onClose, login, register }) => {
   const [isLoginMode, setIsLoginMode] = useState(true);
@@ -25,7 +26,14 @@ const AuthModal = ({ isOpen, onClose, login, register }) => {
           onClose();
           window.location.href = '/app';
         } else {
-          alert(result.error || 'Login failed');
+          await Swal.fire({
+            icon: 'error',
+            title: 'Login Failed',
+            text: result.error || 'Login failed',
+            background: 'rgba(17, 24, 39, 0.95)',
+            color: '#ffffff',
+            confirmButtonColor: '#ef4444'
+          });
         }
       } else {
         console.log('Attempting registration in AuthModal');
@@ -37,15 +45,36 @@ const AuthModal = ({ isOpen, onClose, login, register }) => {
         console.log('Registration result:', result);
         
         if (result.success) {
-          alert('Registration successful! Please login.');
+          await Swal.fire({
+            icon: 'success',
+            title: 'Registration Successful!',
+            text: 'Please login with your credentials.',
+            background: 'rgba(17, 24, 39, 0.95)',
+            color: '#ffffff',
+            confirmButtonColor: '#10b981'
+          });
           setIsLoginMode(true);
         } else {
-          alert(result.error || 'Registration failed');
+          await Swal.fire({
+            icon: 'error',
+            title: 'Registration Failed',
+            text: result.error || 'Registration failed',
+            background: 'rgba(17, 24, 39, 0.95)',
+            color: '#ffffff',
+            confirmButtonColor: '#ef4444'
+          });
         }
       }
     } catch (error) {
       console.error('AuthModal error:', error);
-      alert('An error occurred. Please try again.');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error occurred',
+        text: 'An error occurred. Please try again.',
+        background: 'rgba(17, 24, 39, 0.95)',
+        color: '#ffffff',
+        confirmButtonColor: '#ef4444'
+      });
     } finally {
       setIsLoading(false);
     }

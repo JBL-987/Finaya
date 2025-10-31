@@ -12,6 +12,7 @@ import LogTrails from "./LogTrails";
 import TransactionDetails from "./TransactionDetails";
 import ProcessingLog from "./ProcessingLog";
 
+
 // Import Advisor components
 import FinancialPlanning from "../advisor/FinancialPlanning";
 import Investment from "../advisor/Investment";
@@ -722,6 +723,8 @@ export default function FinancialManagementContent({
             {activeSubTab === "recommendations" && (
               <Recommendations transactions={transactions} />
             )}
+
+
           </>
         )}
 

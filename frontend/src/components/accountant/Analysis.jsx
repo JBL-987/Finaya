@@ -1,29 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { PieChart, BarChart3, TrendingUp, ArrowUpRight, ArrowDownRight, AlertCircle } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { BarChart3, TrendingUp, ArrowUpRight, ArrowDownRight, AlertCircle, Brain, Zap } from 'lucide-react';
+import { accountingAPI } from '../../services/api';
+import { Skeleton } from '../ui/Skeleton';
 
 const Analysis = ({ transactions }) => {
-  // State untuk menyimpan hasil analisis
+  // State untuk menyimpan hasil analisis AI
+  const [aiInsights, setAiInsights] = useState(null);
   const [financialRatios, setFinancialRatios] = useState([
     {
       name: 'Current Ratio',
       value: '0',
       change: '0',
       status: 'neutral',
-      description: 'Measures ability to pay short-term obligations'
+      description: 'AI analysis of liquidity position'
     },
     {
       name: 'Profit Margin',
       value: '0%',
       change: '0%',
       status: 'neutral',
-      description: 'Percentage of revenue that becomes profit'
+      description: 'AI assessment of profitability'
     },
     {
       name: 'Debt Ratio',
       value: '0',
       change: '0',
       status: 'neutral',
-      description: 'Proportion of assets financed by debt'
+      description: 'AI analysis of financial leverage'
     },
   ]);
   const [budgetComparison, setBudgetComparison] = useState([
@@ -46,28 +50,51 @@ const Analysis = ({ transactions }) => {
   const [expensesByCategory, setExpensesByCategory] = useState([]);
   const [anomalies, setAnomalies] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState(null);
 
-  // Effect untuk menganalisis transaksi ketika data berubah
+  // Effect untuk menganalisis transaksi dengan AI ketika data berubah
   useEffect(() => {
-    if (transactions) {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        if (transactions.length > 0) {
-          analyzeTransactions(transactions);
-        } else {
-          // Set empty state with zeros
-          setEmptyState();
-        }
-      } catch (err) {
-        setError('Failed to analyze transactions: ' + err.message);
-      } finally {
-        setIsLoading(false);
-      }
+    if (transactions && transactions.length > 0) {
+      performAIAnalysis();
+    } else {
+      setEmptyState();
+      setIsLoading(false);
     }
   }, [transactions]);
+
+  const performAIAnalysis = async () => {
+    setIsAnalyzing(true);
+    setError(null);
+
+    try {
+      // Get AI pattern analysis
+      const patternResponse = await accountingAPI.analyzePatterns();
+      if (patternResponse.success) {
+        setAiInsights(patternResponse.analysis);
+        console.log('AI Pattern Analysis:', patternResponse.analysis);
+      }
+
+      // Fall back to basic analysis if AI fails
+      if (transactions.length > 0) {
+        analyzeTransactions(transactions);
+      }
+
+      import("../../utils/toastNotification.js").then(({ showToast }) => {
+        showToast("AI analysis completed successfully", "success");
+      });
+
+    } catch (aiError) {
+      console.error('AI Analysis failed, falling back to basic analysis:', aiError);
+      // Fall back to basic calculation if AI fails
+      if (transactions.length > 0) {
+        analyzeTransactions(transactions);
+      }
+    } finally {
+      setIsAnalyzing(false);
+      setIsLoading(false);
+    }
+  };
 
   // Set empty state with zeros
   const setEmptyState = () => {
@@ -328,9 +355,112 @@ const Analysis = ({ transactions }) => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64 flex-col">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-2"></div>
-        <p className="text-gray-400">Loading analysis...</p>
+      <div className="space-y-6">
+        {/* Analysis Header Skeleton */}
+        <div className="flex items-center justify-between mb-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+
+        {/* Sumamry skeleton */}
+        <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-6">
+          <Skeleton className="h-4 w-32 mb-4" />
+          <div className="space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
+
+        {/* Key Metrics Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-gray-900 border border-blue-900/30 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-5 w-5" />
+              </div>
+              <Skeleton className="h-8 w-12 mb-2" />
+              <Skeleton className="h-3 w-40" />
+            </div>
+          ))}
+        </div>
+
+        {/* Financial Ratios Skeleton */}
+        <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6">
+          <Skeleton className="h-6 w-36 mb-6" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-gray-800 rounded-lg p-4">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <div className="flex items-end justify-between">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-4 w-12" />
+                </div>
+                <Skeleton className="h-3 w-32 mt-2" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Budget vs Actual Skeleton */}
+        <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6">
+          <Skeleton className="h-6 w-40 mb-6" />
+          <div className="overflow-x-auto">
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex justify-between items-center p-3 border-b border-gray-800">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Monthly Trends Skeleton */}
+        <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6">
+          <Skeleton className="h-6 w-32 mb-6" />
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-gray-800 rounded-lg p-4">
+                <Skeleton className="h-5 w-24 mb-2" />
+                <div className="grid grid-cols-3 gap-4 mt-2">
+                  <div>
+                    <Skeleton className="h-3 w-20 mb-1" />
+                    <Skeleton className="h-6 w-16" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-3 w-24 mb-1" />
+                    <Skeleton className="h-6 w-16" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-3 w-16 mb-1" />
+                    <Skeleton className="h-6 w-16" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Expense Categories Skeleton */}
+        <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6">
+          <Skeleton className="h-6 w-36 mb-6" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-gray-800 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-8" />
+                </div>
+                <Skeleton className="h-6 w-20 mt-1" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -354,6 +484,16 @@ const Analysis = ({ transactions }) => {
           <span className="text-sm text-gray-400">Last updated: {new Date().toLocaleDateString()}</span>
         </div>
       </div>
+
+      {(!transactions || transactions.length === 0) && (
+        <div className="bg-blue-900/10 border border-blue-500/30 rounded-lg p-6 mb-6">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-blue-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-white mb-2">No Transactions to Analyze</h3>
+            <p className="text-gray-400">Add some transactions to get detailed financial analysis and insights.</p>
+          </div>
+        </div>
+      )}
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

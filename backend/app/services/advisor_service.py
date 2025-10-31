@@ -21,8 +21,14 @@ class AdvisorService:
 
     def get_user_goals(self, user_id: int) -> List[FinancialGoal]:
         """Get all goals for a user"""
-        data = self.repository.get_by_user_id(user_id)
-        return [FinancialGoal(**item) for item in data]
+        try:
+            data = self.repository.get_by_user_id(user_id)
+            if not data:
+                return []
+            return [FinancialGoal(**item) for item in data]
+        except Exception as e:
+            print(f"Error getting user goals: {e}")
+            return []  # Return empty list instead of crashing
 
     def get_goal_by_id(self, goal_id: int) -> Optional[FinancialGoal]:
         """Get goal by ID"""

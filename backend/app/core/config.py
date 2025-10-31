@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:8000"
 
+    # Rate Limiting
+    REDIS_URL: str = "redis://localhost:6379"
+    RATE_LIMIT_REQUESTS: int = 100  # requests per window
+    RATE_LIMIT_WINDOW: int = 60     # seconds
+    AUTH_RATE_LIMIT_REQUESTS: int = 5  # auth endpoints stricter
+    AUTH_RATE_LIMIT_WINDOW: int = 300   # 5 minutes
+
     class Config:
         env_file = ".env"
         case_sensitive = False

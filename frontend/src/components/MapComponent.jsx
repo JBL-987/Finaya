@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { Skeleton } from './ui/Skeleton';
 
 // Ensure Leaflet is available globally
 if (typeof window !== 'undefined') {
@@ -334,10 +335,10 @@ const MapComponent = ({ onLocationSelect, selectedLocation, onMapReady, building
       )}
       {/* Loading overlay */}
       {!mapLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-20">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-600 mx-auto mb-3"></div>
-            <p className="text-lg text-gray-600">Loading Map...</p>
+        <div className="absolute inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-10">
+          <div className="text-center text-white">
+            <Skeleton className="h-8 w-8 rounded-full mx-auto mb-3" />
+            <Skeleton className="h-4 w-24 mx-auto" />
           </div>
         </div>
       )}

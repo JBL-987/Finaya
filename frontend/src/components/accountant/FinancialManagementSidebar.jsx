@@ -12,7 +12,8 @@ import {
   TrendingUp,
   FileSpreadsheet,
   ChevronRight,
-  ClipboardList
+  ClipboardList,
+  Brain
 } from "lucide-react";
 
 export default function FinancialManagementSidebar({

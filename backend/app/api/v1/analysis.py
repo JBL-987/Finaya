@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from pydantic import BaseModel
 from ...schemas.schemas import AnalysisCreate, Analysis, User, AreaDistribution
 from ...services.analysis_service import AnalysisService
-from ...services.openrouter_service import analyze_location_image, calculate_business_metrics, reverse_geocode
+from ...services.openrouter_service_analysis import analyze_location_image, calculate_business_metrics, reverse_geocode
 from .auth import get_current_user, get_current_user_optional
 
 router = APIRouter()

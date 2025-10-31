@@ -11,6 +11,7 @@ import {
   FileText,
   Trash,
 } from "lucide-react";
+import { Skeleton } from "../ui/Skeleton";
 
 const LogTrails = ({
   transactions,

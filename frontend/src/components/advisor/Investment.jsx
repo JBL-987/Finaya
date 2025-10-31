@@ -1,42 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, TrendingUp, DollarSign, AlertCircle, ChevronRight, Loader, BarChart3, Percent } from 'lucide-react';
 import { advisorAPI } from '../../services/api';
+import { Skeleton } from '../ui/Skeleton';
 
 const Investment = ({ transactions }) => {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedRecommendation, setSelectedRecommendation] = useState(null);
+  const [investmentParams, setInvestmentParams] = useState({
+    risk_level: 'moderate',
+    investment_horizon: 10,
+    investment_amount: 500
+  });
+  const [generatingRecommendations, setGeneratingRecommendations] = useState(false);
 
   useEffect(() => {
     if (transactions && transactions.length > 0) {
-      setLoading(true);
-      const fetchRecommendations = async () => {
-        try {
-          console.log('Fetching investment recommendations with transactions:', transactions.length);
-          const recommendationsFromAPI = await investmentRecommendationsFromAI(transactions);
-          console.log('API Response:', recommendationsFromAPI);
-          
-          if (recommendationsFromAPI && Array.isArray(recommendationsFromAPI) && recommendationsFromAPI.length > 0) {
-            setRecommendations(recommendationsFromAPI);
-          } else {
-            console.error('Invalid API response format:', recommendationsFromAPI);
-            // Set default recommendations jika respons tidak valid
-            setDefaultRecommendations();
-          }
-        } catch (error) {
-          console.error('Error fetching investment recommendations:', error);
-          setDefaultRecommendations();
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchRecommendations();
+      // Start with basic analysis, but offer AI-powered personalized recommendations
+      analyzeBasicInvestmentData(transactions);
     } else {
-      // Set default recommendations jika tidak ada transaksi
       setDefaultRecommendations();
     }
   }, [transactions]);
+
+  const analyzeBasicInvestmentData = (transactions) => {
+    // Calculate basic investment metrics from transactions
+    const totalIncome = transactions
+      .filter(t => t.transactionType === 'income')
+      .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+
+    const totalExpenses = transactions
+      .filter(t => t.transactionType === 'expense')
+      .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+
+    const availableInvestment = Math.max(0, totalIncome - totalExpenses);
+
+    // Update investment params based on financial data
+    setInvestmentParams(prev => ({
+      ...prev,
+      investment_amount: Math.min(availableInvestment * 0.2, 10000) || prev.investment_amount
+    }));
+
+    // Set basic recommendations initially
+    setDefaultRecommendations();
+  };
 
   // Fungsi untuk set default recommendations
   const setDefaultRecommendations = () => {
@@ -62,50 +69,95 @@ const Investment = ({ transactions }) => {
     ]);
   };
 
-  const investmentRecommendationsFromAI = async (transactions) => {
+  const generatePersonalizedRecommendations = async () => {
     try {
-      console.log('Calling advisorAPI for investment recommendations...');
+      setGeneratingRecommendations(true);
 
-      // Prepare user profile data based on transactions
-      const userProfile = {
-        transactionCount: transactions.length,
-        categories: transactions.reduce((acc, t) => {
-          acc[t.category || 'other'] = (acc[t.category || 'other'] || 0) + 1;
-          return acc;
-        }, {}),
-        totalInvestments: transactions
-          .filter(t => t.transactionType === 'income' || t.transactionType === 'expense')
-          .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0),
-        riskTolerance: 'medium', // default
-        timeHorizon: '5years' // default
-      };
-
-      const response = await advisorAPI.getInvestmentRecommendations(userProfile);
+      const response = await advisorAPI.getInvestmentRecommendations(investmentParams);
 
       if (response.success && response.recommendations) {
-        console.log('Investment recommendations received:', response.recommendations);
+        console.log('Personalized recommendations received:', response.recommendations);
 
-        // Normalize the data format for consistent UI display
-        return response.recommendations.map((rec, index) => ({
-          id: rec.id || index + 1,
-          title: rec.name || rec.title,
-          description: rec.description || rec.explanation || '',
-          impact: rec.risk_level === 'high' ? 'High' :
-                 rec.risk_level === 'medium' ? 'Medium' : 'Low',
-          category: rec.type ? (rec.type.charAt(0).toUpperCase() + rec.type.slice(1)).replace('_', ' ') : 'Diversification',
-          benefit: rec.expected_return ? `${rec.expected_return}% expected return` : rec.benefit || '',
-          instrumentType: rec.type || 'stock'
-        }));
+        // Transform AI recommendations to display format
+        const transformedRecs = transformAIRecommendations(response.recommendations);
+        setRecommendations(transformedRecs);
       } else {
-        console.error('Invalid advisor API response:', response);
+        console.error('Invalid personalized recommendations response:', response);
+        setDefaultRecommendations();
       }
     } catch (error) {
-      console.error('Error calling advisor API:', error);
+      console.error('Error generating personalized recommendations:', error);
+      setDefaultRecommendations();
+    } finally {
+      setGeneratingRecommendations(false);
+    }
+  };
+
+  const transformAIRecommendations = (aiResponse) => {
+    if (typeof aiResponse === 'string') {
+      // If AI returns text, try to parse recommendations from it
+      return parseRecommendationsFromText(aiResponse);
     }
 
-    // Return empty array or fallback
-    return [];
-  }
+    if (Array.isArray(aiResponse)) {
+      return aiResponse.map((rec, index) => ({
+        id: rec.id || index + 1,
+        title: rec.title || rec.name || `Recommendation ${index + 1}`,
+        description: rec.description || rec.explanation || rec.strategy || '',
+        impact: rec.impact || rec.priority || 'Medium',
+        category: rec.category || rec.type || 'Portfolio',
+        benefit: rec.benefit || rec.expected_return || 'Risk-adjusted returns',
+        instrumentType: rec.instrument_type || rec.asset_class || 'diversified',
+        portfolio_allocation: rec.allocation,
+        risk_assessment: rec.risk_assessment
+      }));
+    }
+
+    return parseRecommendationsFromText(aiResponse.toString());
+  };
+
+  const parseRecommendationsFromText = (text) => {
+    // Simple parsing for text-based AI responses
+    const lines = text.split('\n').filter(line => line.trim());
+    const recommendations = [];
+
+    lines.forEach((line, index) => {
+      if (line.length > 20 && !line.toLowerCase().includes('here are') && !line.toLowerCase().includes('based on')) {
+        recommendations.push({
+          id: index + 1,
+          title: line.split(':')[0].trim() || `Recommendation ${index + 1}`,
+          description: line.split(':').slice(1).join(':').trim() || line,
+          impact: line.toLowerCase().includes('high') ? 'High' : line.toLowerCase().includes('low') ? 'Low' : 'Medium',
+          category: 'AI Generated',
+          benefit: 'Personalized strategy',
+          instrumentType: 'diversified'
+        });
+      }
+    });
+
+    return recommendations.length > 0 ? recommendations : getDefaultRecommendations();
+  };
+
+  const getDefaultRecommendations = () => [
+    {
+      id: 1,
+      title: 'Diversify Portfolio',
+      description: 'Spread investments across different asset classes to reduce risk and improve returns.',
+      impact: 'High',
+      category: 'Diversification',
+      benefit: 'Reduced volatility',
+      instrumentType: 'etf'
+    },
+    {
+      id: 2,
+      title: 'Long-term Holding Strategy',
+      description: 'Focus on long-term investments that benefit from compound growth and market trends.',
+      impact: 'Medium',
+      category: 'Long-term Strategy',
+      benefit: 'Compound growth potential',
+      instrumentType: 'index'
+    }
+  ];
 
   const getInstrumentIcon = (instrumentType) => {
     switch (instrumentType) {
@@ -128,6 +180,70 @@ const Investment = ({ transactions }) => {
         <h1 className="text-2xl font-bold text-white">Investment Analysis</h1>
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-400">Last updated: {new Date().toLocaleDateString()}</span>
+        </div>
+      </div>
+
+      {/* Investment Parameters and Generation */}
+      <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6 shadow-lg">
+        <h2 className="mb-4 text-lg font-bold text-white">Personalized Investment Settings</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Risk Level</label>
+            <select
+              value={investmentParams.risk_level}
+              onChange={(e) => setInvestmentParams(prev => ({ ...prev, risk_level: e.target.value }))}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="conservative">Conservative</option>
+              <option value="moderate">Moderate</option>
+              <option value="aggressive">Aggressive</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Investment Horizon (Years)</label>
+            <input
+              type="number"
+              min="1"
+              max="50"
+              value={investmentParams.investment_horizon}
+              onChange={(e) => setInvestmentParams(prev => ({ ...prev, investment_horizon: parseInt(e.target.value) }))}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Investment Amount ($)</label>
+            <input
+              type="number"
+              min="100"
+              step="100"
+              value={investmentParams.investment_amount}
+              onChange={(e) => setInvestmentParams(prev => ({ ...prev, investment_amount: parseFloat(e.target.value) }))}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+        <div className="text-center">
+          <button
+            onClick={generatePersonalizedRecommendations}
+            disabled={generatingRecommendations}
+            className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              generatingRecommendations
+                ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
+          >
+            {generatingRecommendations ? (
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                Generating AI Recommendations...
+              </div>
+            ) : (
+              'Get AI-Powered Recommendations'
+            )}
+          </button>
+          <p className="text-xs text-gray-400 mt-2">
+            Based on your financial data and selected parameters, AI will provide personalized portfolio recommendations
+          </p>
         </div>
       </div>
 

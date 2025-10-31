@@ -184,6 +184,28 @@ export const accountingAPI = {
     const response = await api.get(`/accounting/transactions/category/${category}`);
     return response.data;
   },
+
+  // AI-powered endpoints
+  categorizeTransaction: async (transactionData) => {
+    const response = await api.post('/accounting/ai/categorize-transaction', transactionData);
+    return response.data;
+  },
+
+  analyzePatterns: async () => {
+    const response = await api.post('/accounting/ai/analyze-patterns');
+    return response.data;
+  },
+
+  extractTransactions: async (documentData) => {
+    const response = await api.post('/accounting/ai/extract-transactions', documentData);
+    return response.data;
+  },
+
+  getFinancialRecommendations: async (goals = null) => {
+    const data = goals ? { goals } : {};
+    const response = await api.post('/accounting/ai/financial-recommendations', data);
+    return response.data;
+  },
 };
 
 // ============= Advisor API =============
@@ -214,17 +236,21 @@ export const advisorAPI = {
     return response.data;
   },
 
+  // AI-powered Financial Plan
+  generateFinancialPlan: async (requestData) => {
+    const response = await api.post('/advisor/financial-plan', requestData);
+    return response.data;
+  },
+
   // Investment Recommendations
-  getInvestmentRecommendations: async (userProfile) => {
-    const response = await api.post('/advisor/investments/recommendations', userProfile);
+  getInvestmentRecommendations: async (requestData) => {
+    const response = await api.post('/advisor/investments/recommendations', requestData);
     return response.data;
   },
 
   // Tax Strategy
-  getTaxStrategy: async (userIncome, userExpenses) => {
-    const response = await api.post('/advisor/tax/strategy', null, {
-      params: { user_income: userIncome, user_expenses: userExpenses }
-    });
+  getTaxStrategy: async (requestData) => {
+    const response = await api.post('/advisor/tax/strategy', requestData);
     return response.data;
   },
 };

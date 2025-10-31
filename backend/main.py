@@ -3,15 +3,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from contextlib import asynccontextmanager
 import uvicorn
+import logging
 
 from app.core.config import settings
 from app.core.database import init_db
+from app.core.dependencies import container, container_context
+from app.core.ratelimiter import rate_limiter, rate_limit_exceeded_handler  
 from app.api.v1.auth import router as auth_router
 from app.api.v1.analysis import router as analysis_router
 from app.api.v1.accounting import router as accounting_router
 from app.api.v1.advisor import router as advisor_router
 from app.api.v1.document import router as document_router
 from app.core.middleware import RequestLoggingMiddleware
+from slowapi.errors import RateLimitExceeded
 
 # Security
 security = HTTPBearer()
@@ -19,16 +23,46 @@ security = HTTPBearer()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
-    print("🚀 Starting Finaya Backend...")
+    logger = logging.getLogger(__name__)
+    logger.info("🚀 Starting Finaya Backend...")
 
+    # Initialize rate limiter first
+    try:
+        await rate_limiter.initialize()
+        app.state.limiter = rate_limiter.limiter
+        app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+        logger.info("✅ Rate limiter initialized and added to app state")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize rate limiter: {e}")
+        raise
+
+    # Initialize dependency container
+    try:
+        await container.initialize()
+        logger.info("✅ Dependency container initialized")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize dependency container: {e}")
+        raise
+
+    # Initialize database
     try:
         await init_db()
+        logger.info("✅ Database initialized")
     except Exception as e:
-        print(f"⚠️ Warning: Supabase init failed during startup: {e}")
+        logger.warning(f"⚠️ Supabase init failed: {e}")
 
-    yield
-    print("👋 Shutting down Finaya Backend...")
+    logger.info("✅ All services initialized successfully")
 
+    yield  # <---- app runs here
+
+    # Graceful shutdown
+    logger.info("👋 Shutting down Finaya Backend...")
+    try:
+        await container.close()
+        await rate_limiter.close()
+        logger.info("✅ Services shut down gracefully")
+    except Exception as e:
+        logger.error(f"❌ Error during shutdown: {e}")
 
 # Create FastAPI application
 app = FastAPI(

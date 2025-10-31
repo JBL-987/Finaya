@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { PieChart, BarChart3, TrendingUp, ArrowUpRight, ArrowDownRight, AlertCircle } from 'lucide-react';
+import { FileText, Download, AlertCircle, PieChart, TrendingUp, BarChart3, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { advisorAPI } from '../../services/api';
+import { Skeleton } from '../ui/Skeleton';
 
 const TaxStrategy = ({ transactions }) => {
   const [taxLiabilities, setTaxLiabilities] = useState([{
@@ -17,6 +18,13 @@ const TaxStrategy = ({ transactions }) => {
   const [estimatedTax, setEstimatedTax] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [taxParams, setTaxParams] = useState({
+    income_amount: 0,
+    expense_breakdown: {},
+    filing_status: 'single'
+  });
+  const [generatingStrategy, setGeneratingStrategy] = useState(false);
+  const [aiTaxStrategy, setAiTaxStrategy] = useState(null);
 
   useEffect(() => {
     if (transactions) {
@@ -52,11 +60,11 @@ const TaxStrategy = ({ transactions }) => {
     setEstimatedTax(0);
   };
 
-  const analyzeTaxStrategy = async (transactions) => {
+  const analyzeTaxStrategy = (transactions) => {
     try {
-      console.log('Calling advisorAPI for tax strategy...');
+      console.log('Analyzing basic tax strategy from transactions...');
 
-      // Calculate income and expenses for API call
+      // Calculate basic tax metrics from transactions
       const totalIncome = transactions
         .filter(t => t.transactionType === 'income')
         .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
@@ -65,22 +73,53 @@ const TaxStrategy = ({ transactions }) => {
         .filter(t => t.transactionType === 'expense')
         .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
+      // Update tax params based on financial data
+      const defaultFilingStatus = 'single';
       const userIncome = Math.max(totalIncome, 0);
-      const userExpenses = {
-        business: totalExpenses * 0.3, // Estimate business expenses
-        personal: totalExpenses * 0.7, // Estimate personal expenses
-        medical: totalExpenses * 0.08, // Estimate medical expenses
-        charitable: totalExpenses * 0.05 // Estimate charitable donations
+      const expenseBreakdown = {
+        business: totalExpenses * 0.3,
+        personal: totalExpenses * 0.7,
+        medical: totalExpenses * 0.08,
+        charitable: totalExpenses * 0.05
       };
 
-      const response = await advisorAPI.getTaxStrategy(userIncome, Object.values(userExpenses));
+      setTaxParams({
+        income_amount: userIncome,
+        expense_breakdown: expenseBreakdown,
+        filing_status: defaultFilingStatus
+      });
+
+      // Set up basic tax calculations
+      fallbackTaxStrategy(transactions);
+    } catch (error) {
+      console.error('Error in basic tax analysis:', error);
+      fallbackTaxStrategy(transactions);
+    }
+  };
+
+  const generateAITaxStrategy = async () => {
+    try {
+      setGeneratingStrategy(true);
+
+      const requestData = {
+        income_amount: taxParams.income_amount,
+        expense_breakdown: taxParams.expense_breakdown,
+        filing_status: taxParams.filing_status
+      };
+
+      console.log('Generating AI tax strategy with params:', requestData);
+
+      const response = await advisorAPI.getTaxStrategy(requestData);
 
       if (response.success && response.strategy) {
-        console.log('Tax strategy received:', response.strategy);
+        console.log('AI Tax strategy received:', response.strategy);
 
         const strategy = response.strategy;
 
-        // Set tax liabilities from API response
+        // Parse and set AI-generated tax strategy
+        setAiTaxStrategy(strategy);
+
+        // Update deductions from AI strategy
         if (strategy.deductions && Array.isArray(strategy.deductions)) {
           setDeductions(strategy.deductions.map(ded => ({
             category: ded.category || ded.name || 'Unknown',
@@ -89,9 +128,8 @@ const TaxStrategy = ({ transactions }) => {
           })));
         }
 
-        // Set credits from API response
+        // Add credits as deductions
         if (strategy.credits && Array.isArray(strategy.credits)) {
-          // Use credits as part of deductions for display
           const creditsAsDeductions = strategy.credits.map(credit => ({
             category: `Credit: ${credit.name || 'Unknown'}`,
             amount: credit.amount || 0,
@@ -100,49 +138,19 @@ const TaxStrategy = ({ transactions }) => {
           setDeductions(prev => [...prev, ...creditsAsDeductions]);
         }
 
-        // Set recommendations for display
-        if (strategy.recommendations && Array.isArray(strategy.recommendations)) {
-          setTaxSavings(estimatedTax * 0.1); // Estimate 10% savings from strategy
-        }
-
-        // Keep local tax calculation for display
-        const estimatedTaxLocal = Math.max(0, userIncome * 0.25);
-        setEstimatedTax(estimatedTaxLocal);
-
-        // Create mock tax liabilities for display
-        setTaxLiabilities([
-          {
-            type: 'Federal Income Tax',
-            amount: estimatedTaxLocal * 0.6,
-            percentage: 60
-          },
-          {
-            type: 'State Income Tax',
-            amount: estimatedTaxLocal * 0.25,
-            percentage: 25
-          },
-          {
-            type: 'Local Tax',
-            amount: estimatedTaxLocal * 0.1,
-            percentage: 10
-          },
-          {
-            type: 'Other Taxes',
-            amount: estimatedTaxLocal * 0.05,
-            percentage: 5
-          }
-        ]);
+        // Calculate potential tax savings
+        const potentialSavings = strategy.estimated_savings || strategy.total_savings || 0;
+        setTaxSavings(potentialSavings);
 
       } else {
-        console.error('Invalid advisor API response:', response);
-        // Fallback to local calculation
-        fallbackTaxStrategy(transactions);
+        console.error('Invalid AI tax strategy response:', response);
+        setError('Failed to generate AI tax strategy');
       }
     } catch (error) {
-      console.error('Error calling advisor API:', error);
+      console.error('Error generating AI tax strategy:', error);
       setError('Failed to analyze tax strategy: ' + error.message);
-      // Fallback to local calculation
-      fallbackTaxStrategy(transactions);
+    } finally {
+      setGeneratingStrategy(false);
     }
   };
 
@@ -215,9 +223,97 @@ const TaxStrategy = ({ transactions }) => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64 flex-col">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500 mb-2"></div>
-        <p className="text-gray-400">Loading tax strategy...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between mb-4">
+          <Skeleton className="h-8 w-48 bg-gray-700" />
+          <Skeleton className="h-4 w-32 bg-gray-700" />
+        </div>
+
+        {/* Metrics Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-xl bg-gray-900 border border-gray-700 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Skeleton className="h-5 w-5 bg-gray-700" />
+                <Skeleton className="h-4 w-24 bg-gray-700" />
+              </div>
+              <Skeleton className="h-8 w-20 mb-2 bg-gray-700" />
+              <Skeleton className="h-3 w-28 bg-gray-700" />
+            </div>
+          ))}
+        </div>
+
+        {/* Tax Liabilities Skeleton */}
+        <div className="rounded-xl bg-gray-900 border border-gray-700 p-6">
+          <Skeleton className="h-6 w-48 mb-6 bg-gray-700" />
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-gray-800 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <Skeleton className="h-4 w-32 bg-gray-700" />
+                  <Skeleton className="h-4 w-20 bg-gray-700" />
+                </div>
+                <Skeleton className="h-2 w-full mb-1 bg-gray-700" />
+                <Skeleton className="h-3 w-8 ml-auto bg-gray-700" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Deductions Analysis Skeleton */}
+        <div className="rounded-xl bg-gray-900 border border-gray-700 p-6">
+          <Skeleton className="h-6 w-36 mb-6 bg-gray-700" />
+          <div className="space-y-4">
+            {['Charitable Contributions', 'Business Expenses', 'Medical Expenses'].map((deduction, i) => (
+              <div key={i} className="bg-gray-800 rounded-lg p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <Skeleton className="h-4 w-40 bg-gray-700" />
+                  <Skeleton className="h-4 w-16 bg-gray-700" />
+                </div>
+                <div className="flex justify-between items-end">
+                  <div className="w-1/2">
+                    <Skeleton className="h-2 w-full mb-1 bg-gray-700" />
+                  </div>
+                  <Skeleton className="h-3 w-24 bg-gray-700" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* AI Tax Strategy Skeleton */}
+        <div className="rounded-xl bg-gray-900 border border-gray-700 p-6">
+          <Skeleton className="h-6 w-48 mb-6 bg-gray-700" />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <Skeleton className="h-4 w-20 mb-2 bg-gray-700" />
+              <Skeleton className="h-10 w-full bg-gray-700" />
+            </div>
+            <div>
+              <Skeleton className="h-4 w-20 mb-2 bg-gray-700" />
+              <Skeleton className="h-10 w-full bg-gray-700" />
+            </div>
+          </div>
+
+          <div className="text-center">
+            <Skeleton className="h-12 w-48 mx-auto bg-gray-700" />
+          </div>
+        </div>
+
+        {/* Tips Section Skeleton */}
+        <div className="rounded-xl bg-gray-900 border border-gray-700 p-6">
+          <Skeleton className="h-6 w-40 mb-6 bg-gray-700" />
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex">
+                <Skeleton className="h-3 w-1 mr-2 mt-0.5 bg-gray-700" />
+                <Skeleton className="h-3 w-full bg-gray-700" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -331,13 +427,132 @@ const TaxStrategy = ({ transactions }) => {
         </div>
       )}
 
+      {/* AI-Powered Tax Strategy */}
       <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6 shadow-lg">
-        <h2 className="mb-6 text-xl font-bold text-white">Tax Strategy Recommendations</h2>
+        <h2 className="mb-4 text-lg font-bold text-white">AI-Powered Tax Optimization</h2>
+
+        {!aiTaxStrategy ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Filing Status</label>
+                <select
+                  value={taxParams.filing_status}
+                  onChange={(e) => setTaxParams(prev => ({ ...prev, filing_status: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="single">Single</option>
+                  <option value="married_filing_jointly">Married Filing Jointly</option>
+                  <option value="married_filing_separately">Married Filing Separately</option>
+                  <option value="head_of_household">Head of Household</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Annual Income</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1000"
+                  value={taxParams.income_amount}
+                  onChange={(e) => setTaxParams(prev => ({ ...prev, income_amount: parseFloat(e.target.value) || 0 }))}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter your annual income"
+                />
+              </div>
+            </div>
+
+            <div className="text-center">
+              <button
+                onClick={generateAITaxStrategy}
+                disabled={generatingStrategy || taxParams.income_amount === 0}
+                className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                  generatingStrategy || taxParams.income_amount === 0
+                    ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+              >
+                {generatingStrategy ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                    Analyzing Tax Optimization...
+                  </div>
+                ) : (
+                  'Generate AI Tax Strategy'
+                )}
+              </button>
+              <p className="text-xs text-gray-400 mt-2">
+                AI will optimize your tax strategy based on deductions, credits, and filing status considerations
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* AI Strategy Overview */}
+            <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-800/30">
+              <h3 className="text-xl font-bold text-white mb-2">{aiTaxStrategy.title || 'Optimized Tax Strategy'}</h3>
+              <p className="text-gray-300">{aiTaxStrategy.summary || aiTaxStrategy.overview}</p>
+            </div>
+
+            {/* Key Recommendations */}
+            {aiTaxStrategy.recommendations && aiTaxStrategy.recommendations.length > 0 && (
+              <div>
+                <h3 className="text-lg font-bold text-white mb-4">Key Tax Recommendations</h3>
+                <div className="space-y-3">
+                  {aiTaxStrategy.recommendations.map((rec, index) => (
+                    <div key={index} className="bg-gray-800 rounded-lg p-4">
+                      <h4 className="text-white font-medium mb-2">{rec.title || rec.action}</h4>
+                      <p className="text-gray-300 text-sm mb-2">{rec.description || rec.details}</p>
+                      {rec.potential_savings && (
+                        <p className="text-green-400 text-sm">Potential Savings: {formatCurrency(rec.potential_savings)}</p>
+                      )}
+                      {rec.timeframe && (
+                        <p className="text-blue-400 text-xs mt-1">Timeframe: {rec.timeframe}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tax Efficiency Score */}
+            {(aiTaxStrategy.tax_efficiency_score || aiTaxStrategy.effective_tax_rate) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {aiTaxStrategy.effective_tax_rate && (
+                  <div className="bg-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-medium mb-2">Effective Tax Rate</h3>
+                    <p className="text-2xl font-bold text-blue-400">{(aiTaxStrategy.effective_tax_rate * 100).toFixed(1)}%</p>
+                    <p className="text-gray-400 text-sm">After deductions and credits</p>
+                  </div>
+                )}
+
+                {aiTaxStrategy.tax_efficiency_score && (
+                  <div className="bg-gray-800 rounded-lg p-4">
+                    <h3 className="text-white font-medium mb-2">Tax Efficiency Score</h3>
+                    <p className="text-2xl font-bold text-green-400">{aiTaxStrategy.tax_efficiency_score}/100</p>
+                    <p className="text-gray-400 text-sm">Higher score means better optimization</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={() => setAiTaxStrategy(null)}
+              className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+            >
+              Generate New Strategy
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6 shadow-lg">
+        <h2 className="mb-6 text-xl font-bold text-white">Additional Tax Strategy Tips</h2>
         <ul className="list-disc pl-5 space-y-2 text-gray-300">
           <li>Consider increasing charitable contributions before year-end to maximize deductions (up to 60% of AGI).</li>
           <li>Review medical expenses to ensure all eligible costs are documented (above 7.5% of AGI).</li>
           <li>Explore additional education credits if eligible (up to $2,500 per student).</li>
           <li>Ensure all business expenses are properly categorized for maximum deductions.</li>
+          <li>Consider tax-advantaged retirement accounts like 401(k) or IRA contributions.</li>
         </ul>
       </div>
     </div>

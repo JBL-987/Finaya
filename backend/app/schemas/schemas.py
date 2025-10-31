@@ -6,7 +6,7 @@ from datetime import datetime
 class AreaDistribution(BaseModel):
     residential: float
     road: float
-    open_space: float
+    openSpace: float
 
 # User schemas
 class UserBase(BaseModel):

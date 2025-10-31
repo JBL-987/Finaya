@@ -235,7 +235,7 @@ const BusinessAnalysisApp = () => {
       updateProgress(5, 'completed', 'Population density calculated!');
       updateProgress(6, 'completed', 'Traffic analysis complete!');
       updateProgress(7, 'completed', 'Revenue projection complete!', {
-        tppd: `${response.metrics.tppd} daily customers`,
+        tppd: `${response.metrics.tppd} potnetial daily customers`,
         monthlyRevenue: `${CURRENCIES[businessParams.currency]?.symbol || ''}${response.metrics.monthly_revenue.toLocaleString()}`
       });
       updateProgress(8, 'completed', 'Analysis complete! Results ready to display.');
@@ -248,7 +248,7 @@ const BusinessAnalysisApp = () => {
         rawResponse: response.raw_response,
         locationName: response.location_name,
         locationData: {
-          areaSquareKm: response.metrics.area_data?.area_sq_km,
+          areaSquareKm: response.metrics.areaData?.areaSqKm,
           populationDensityPerSqKm: 16000,
           screenshotArea: screenshot.metadata
         }

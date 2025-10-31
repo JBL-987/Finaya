@@ -1,27 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Lightbulb, TrendingUp, DollarSign, AlertCircle, ChevronRight, Loader } from 'lucide-react';
+import { accountingAPI } from '../../services/api';
 
 const Recommendations = ({ transactions }) => {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedRecommendation, setSelectedRecommendation] = useState(null);
+  const [aiRecommendations, setAiRecommendations] = useState(null);
 
   useEffect(() => {
     if (transactions && transactions.length > 0) {
       setLoading(true);
       const fetchRecommendations = async () => {
         try {
-          console.log('Fetching recommendations with transactions:', transactions.length);
-          const recommendationsFromAPI = await recommendationsFromAI(transactions);
-          console.log('API Response:', recommendationsFromAPI);
-          
+          // Get AI-powered recommendations
+          const aiResponse = await accountingAPI.getFinancialRecommendations();
+          if (aiResponse.success) {
+            setAiRecommendations(aiResponse.recommendations);
+            console.log('AI Recommendations:', aiResponse.recommendations);
+          }
+
+          // Fall back to default recommendations if AI fails
+          const recommendationsFromAPI = await getRecommendationsFromAI();
+
           if (recommendationsFromAPI && Array.isArray(recommendationsFromAPI) && recommendationsFromAPI.length > 0) {
             setRecommendations(recommendationsFromAPI);
           } else {
-            console.error('Invalid API response format:', recommendationsFromAPI);
-            // Set default recommendations jika respons tidak valid
             setDefaultRecommendations();
           }
+
+          import("../../utils/toastNotification.js").then(({ showToast }) => {
+            showToast("AI recommendations generated successfully", "success");
+          });
         } catch (error) {
           console.error('Error fetching recommendations:', error);
           setDefaultRecommendations();
@@ -32,7 +42,6 @@ const Recommendations = ({ transactions }) => {
 
       fetchRecommendations();
     } else {
-      // Set default recommendations jika tidak ada transaksi
       setDefaultRecommendations();
     }
   }, [transactions]);

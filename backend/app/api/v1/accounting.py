@@ -117,3 +117,115 @@ async def get_transactions_by_category(
         return [t.model_dump() for t in transactions]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# AI-powered endpoints
+@router.post("/ai/categorize-transaction", response_model=Dict[str, Any])
+async def categorize_transaction_ai_endpoint(
+    request_data: Dict[str, Any],
+    current_user: User = Depends(get_current_user)
+):
+    """AI-powered transaction categorization"""
+    try:
+        from ...services.openrouter_service_management import categorize_transaction_ai
+
+        description = request_data.get("description", "")
+        amount = request_data.get("amount", 0)
+        transaction_type = request_data.get("transactionType")
+
+        if not description or not amount:
+            raise HTTPException(status_code=400, detail="Description and amount are required")
+
+        result = await categorize_transaction_ai(description, amount, transaction_type)
+        return {"success": True, "categorization": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/ai/analyze-patterns", response_model=Dict[str, Any])
+async def analyze_financial_patterns(
+    current_user: User = Depends(get_current_user)
+):
+    """AI analysis of financial patterns"""
+    try:
+        from ...services.openrouter_service_management import analyze_financial_patterns
+
+        transactions = accounting_service.get_user_transactions(current_user.id)
+        transactions_list = [
+            {
+                "date": str(t.date),
+                "description": t.description,
+                "amount": t.amount,
+                "category": t.category,
+                "transactionType": t.type
+            }
+            for t in transactions
+        ]
+
+        if not transactions_list:
+            raise HTTPException(status_code=400, detail="No transactions found for analysis")
+
+        result = await analyze_financial_patterns(transactions_list)
+        return {"success": True, "analysis": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/ai/extract-transactions", response_model=Dict[str, Any])
+async def extract_transactions_from_document(
+    request_data: Dict[str, Any],
+    current_user: User = Depends(get_current_user)
+):
+    """AI-powered transaction extraction from documents"""
+    try:
+        from ...services.openrouter_service_management import extract_transactions_from_document
+
+        text_content = request_data.get("textContent", "")
+        document_type = request_data.get("documentType", "unknown")
+
+        if not text_content:
+            raise HTTPException(status_code=400, detail="Text content is required")
+
+        extracted_transactions = await extract_transactions_from_document(text_content, document_type)
+        return {"success": True, "transactions": extracted_transactions}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/ai/financial-recommendations", response_model=Dict[str, Any])
+async def get_financial_recommendations(
+    request_data: Dict[str, Any] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """AI-generated financial recommendations"""
+    try:
+        from ...services.openrouter_service_management import generate_financial_recommendations
+
+        transactions = accounting_service.get_user_transactions(current_user.id)
+        transactions_list = [
+            {
+                "date": str(t.date),
+                "description": t.description,
+                "amount": t.amount,
+                "category": t.category,
+                "transactionType": t.type
+            }
+            for t in transactions
+        ]
+
+        if not transactions_list:
+            raise HTTPException(status_code=400, detail="No transactions found for recommendations")
+
+        goals = request_data.get("goals", []) if request_data else []
+
+        result = await generate_financial_recommendations(transactions_list, goals)
+        return {"success": True, "recommendations": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate financial recommendations: {str(e)}"
+        )
