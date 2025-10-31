@@ -7,7 +7,7 @@ const Footer_Component = () => {
         <div className="flex items-center space-x-3">
           <div className="p-2">
            <img
-            src="/Finaya_Logo.png"
+            src="/Finaya_Logo.svg"
             alt="Finaya Logo"
             className="h-20 w-20 sm:h-24 sm:w-24 object-contain"
             />

@@ -13,6 +13,7 @@ import {
   Shield,
   Globe
 } from "lucide-react";
+import * as flags from 'country-flag-icons/react/3x2';
 import AuthModal from "../components/AuthModal";
 
 export default function Home({ login, register }) {
@@ -202,82 +203,82 @@ export default function Home({ login, register }) {
   // Data Features
   const features = [
     {
-      icon: <MapPin className="w-8 h-8" />,
-      title: 'Location Intelligence',
-      description: 'AI-powered profitability analysis for any location across Asia-Pacific',
+      icon: <Brain className="w-8 h-8" />,
+      title: 'AI Yield Analysis',
+      description: 'Advanced AI algorithms analyze investment yield potential and optimize financial strategies',
     },
     {
-      icon: <TrendingUp className="w-8 h-8" />,
-      title: 'Financial Management',
-      description: 'Track expenses, forecast revenue, and manage cash flow in real-time',
+      icon: <Zap className="w-8 h-8" />,
+      title: 'Automation Tools',
+      description: 'Streamline financial workflows with intelligent automation for reporting and compliance',
     },
     {
-      icon: <Globe className="w-8 h-8" />,
-      title: 'Regional Insights',
-      description: 'Compare performance with benchmarks across APAC markets',
+      icon: <Shield className="w-8 h-8" />,
+      title: 'Strategic Advisor',
+      description: 'Personalized financial guidance and risk assessment for sustainable growth',
     }
   ];
 
   const stats = [
-    { number: "80%", label: "MSMEs fail within 5 years", icon: <Target className="h-8 w-8" /> },
-    { number: "70M", label: "MSMEs in Asia-Pacific", icon: <Users className="h-8 w-8" /> },
-    { number: "50%", label: "Lack business analytics", icon: <Brain className="h-8 w-8" /> },
-    { number: "2.6T", label: "USD credit gap", icon: <Calculator className="h-8 w-8" /> }
+    { number: "70%", label: "Inadequate financial planning", icon: <Target className="h-8 w-8" /> },
+    { number: "25%", label: "Yield optimized with Finaya", icon: <TrendingUp className="h-8 w-8" /> },
+    { number: "90%", label: "Businesses need automation", icon: <Zap className="h-8 w-8" /> },
+    { number: "10M+", label: "Data points analyzed daily", icon: <Brain className="h-8 w-8" /> }
   ];
 
   const howItWorks = [
-    { 
-      step: 1, 
-      title: 'Select Location', 
-      desc: 'Click on map to choose your business location',
-      icon: <MapPin className="w-6 h-6" />
+    {
+      step: 1,
+      title: 'Input Financial Data',
+      desc: 'Upload or manually enter your financial data and investment details',
+      icon: <Calculator className="w-6 h-6" />
     },
-    { 
-      step: 2, 
-      title: 'AI Analysis', 
-      desc: 'Computer vision analyzes area distribution and demographics',
-      icon: <BarChart3 className="w-6 h-6" />
+    {
+      step: 2,
+      title: 'AI Analysis',
+      desc: 'Advanced algorithms analyze yield potential and risk factors',
+      icon: <Brain className="w-6 h-6" />
     },
-    { 
-      step: 3, 
-      title: 'Get Insights', 
-      desc: 'Receive profitability score and revenue projections',
+    {
+      step: 3,
+      title: 'Get Strategic Insights',
+      desc: 'Receive personalized yield optimization recommendations',
+      icon: <TrendingUp className="w-6 h-6" />
+    },
+    {
+      step: 4,
+      title: 'Automate & Optimize',
+      desc: 'Deploy automation tools for continuous financial management',
       icon: <Zap className="w-6 h-6" />
-    },
-    { 
-      step: 4, 
-      title: 'Manage Finances', 
-      desc: 'Track actual vs projected performance in real-time',
-      icon: <Shield className="w-6 h-6" />
     }
   ];
 
   const countries = [
-    { flag: '🇮🇩', name: 'Indonesia' },
-    { flag: '🇹🇭', name: 'Thailand' },
-    { flag: '🇻🇳', name: 'Vietnam' },
-    { flag: '🇵🇭', name: 'Philippines' },
-    { flag: '🇲🇾', name: 'Malaysia' },
-    { flag: '🇸🇬', name: 'Singapore' },
-    { flag: '🇯🇵', name: 'Japan' },
-    { flag: '🇰🇷', name: 'South Korea' },
-    { flag: '🇦🇺', name: 'Australia' }
+    { Flag: flags.ID, name: 'Indonesia' },
+    { Flag: flags.TH, name: 'Thailand' },
+    { Flag: flags.VN, name: 'Vietnam' },
+    { Flag: flags.PH, name: 'Philippines' },
+    { Flag: flags.MY, name: 'Malaysia' },
+    { Flag: flags.SG, name: 'Singapore' },
+    { Flag: flags.JP, name: 'Japan' },
+    { Flag: flags.KR, name: 'South Korea' },
+    { Flag: flags.AU, name: 'Australia' }
   ];
 
   const testimonials = [
     {
-      quote: "Finaya helped me analyze several different locations. This platform is very accurate in predicting business potential!",
-      author: "Budi S., Grocery Store Owner",
+      quote: "Finaya revolutionized my financial management! The AI yield analysis increased my investment returns by 25% and automation handled all compliance reporting.",
+      author: "Rahman S., Investment Manager",
       rating: 5,
     },
     {
-      quote: "The AI analysis is very detailed. I can see how many potential customers per day before opening a business. Very helpful!",
-      author: "Sari L., Restaurant Owner",
+      quote: "The strategic advisor feature is incredible. It provided personalized recommendations that optimized my portfolio and saved thousands in unnecessary fees.",
+      author: "Maya L., Financial Advisor",
       rating: 5,
     },
     {
-      quote: "This platform saves time and location research costs. In 5 minutes I already know the business potential of my location.",
-      author: "Andi K., Cafe Owner",
+      quote: "Automating my financial workflows with Finaya freed up 20 hours per week. The yield optimization suggestions have been spot on every time.",
+      author: "Andi K., Startup Founder",
       rating: 5,
     },
   ];
@@ -290,13 +291,13 @@ export default function Home({ login, register }) {
         
         <div className="max-w-6xl z-20 text-center relative">
           <h1 className="hero-title text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 text-white leading-tight">
-            AI-Powered Location
+            Financial Automation
             <br />
-            <span className="text-yellow-400">Analysis Platform</span>
+            <span className="text-yellow-400">Yield Advisor</span>
           </h1>
 
           <p className="hero-subtitle text-lg sm:text-xl md:text-2xl mb-8 text-gray-300 max-w-4xl mx-auto leading-relaxed">
-            Intelligent business location analysis platform using AI to evaluate profitability potential across locations
+            Intelligent financial automation platform designed for MSMEs that analyzes yield potential and provides strategic financial advice for optimized returns
           </p>
           
           <div className="hero-buttons flex flex-col sm:flex-row gap-4 justify-center mb-12">
@@ -348,10 +349,10 @@ export default function Home({ login, register }) {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
-              MSMEs Need Better Tools
+              Financial Challenges Facing MSMEs
             </h2>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Critical barriers preventing business growth across Asia-Pacific
+              Key financial barriers hindering optimal yield and growth in Asian markets
             </p>
           </div>
 
@@ -448,7 +449,9 @@ export default function Home({ login, register }) {
           <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-4 max-w-6xl mx-auto">
             {countries.map((country, index) => (
               <div key={index} className="country-card text-center p-4 bg-gray-800 rounded-xl border border-gray-700 hover:border-yellow-400 hover:shadow-lg transition-all duration-300 hover:scale-105 group">
-                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300">{country.flag}</div>
+                <div className="mb-3 flex justify-center items-center h-12">
+                  <country.Flag className="w-16 h-12 object-cover rounded shadow-sm group-hover:scale-110 transition-transform duration-300" />
+                </div>
                 <div className="text-sm font-medium text-gray-300">{country.name}</div>
               </div>
             ))}
@@ -489,10 +492,10 @@ export default function Home({ login, register }) {
       <section id="cta" className="py-20 px-4 bg-yellow-600">
         <div className="cta-content max-w-4xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
-            Ready to grow your business?
+            Ready to optimize your financial future?
           </h2>
           <p className="text-xl text-yellow-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of MSMEs making data-driven decisions across Asia-Pacific
+            Join thousands of MSMEs maximizing returns with AI-driven financial automation
           </p>
           <p className="text-sm text-yellow-100 mt-6">
             No credit card required • Free forever plan available

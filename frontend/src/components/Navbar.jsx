@@ -15,9 +15,9 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
         <div className="flex items-center space-x-3 rtl:space-x-reverse">
           <div className="flex items-center space-x-2">
             <img
-              src="/Finaya_Logo.png"
+              src="/Finaya_Logo.svg"
               alt="Finaya Logo"
-              className="h-10 w-10 sm:h-15 sm:w-15 object-contain"
+              className="h-12 w-20 sm:h-16 sm:w-24 object-contain"
             />
           </div>
         </div>
