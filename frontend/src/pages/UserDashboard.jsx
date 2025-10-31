@@ -29,6 +29,7 @@ import {
 import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
 import { authAPI, analysisAPI } from '../services/api';
 import { Skeleton } from '../components/ui/Skeleton';
+import { formatCurrency } from '../services/currencies';
 
 const UserDashboard = () => {
   const [user, setUser] = useState(null);
@@ -36,6 +37,13 @@ const UserDashboard = () => {
   const [error, setError] = useState(null);
   const [analyses, setAnalyses] = useState([]);
   const [dashboardStats, setDashboardStats] = useState(null);
+  const [selectedCurrency, setSelectedCurrency] = useState(
+    localStorage.getItem('selectedCurrency') || 'USD'
+  );
+
+  useEffect(() => {
+    localStorage.setItem('selectedCurrency', selectedCurrency);
+  }, [selectedCurrency]);
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -122,9 +130,11 @@ const UserDashboard = () => {
           </div>
         </div>
 
-        {/* Key Metrics Cards */}
-        <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+
+
+      {/* Key Metrics Cards */}
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 backdrop-blur-sm">
                 <div className="flex items-center justify-between">
@@ -295,7 +305,7 @@ const UserDashboard = () => {
               <div>
                 <p className="text-green-300 text-sm font-medium">Avg. Revenue</p>
                 <p className="text-3xl font-bold text-white mt-1">
-                  ${Math.round(dashboardStats?.avgMonthlyRevenue || 0).toLocaleString()}
+                  {formatCurrency(Math.round(dashboardStats?.avgMonthlyRevenue || 0), selectedCurrency)}
                 </p>
                 <p className="text-green-400 text-xs mt-1 flex items-center">
                   <Target className="w-3 h-3 mr-1" />

@@ -6,12 +6,9 @@ import {
   Target,
   ArrowRight,
   TrendingUp,
-  Users,
   Zap,
   Star,
   Calculator,
-  Shield,
-  Globe
 } from "lucide-react";
 import * as flags from 'country-flag-icons/react/3x2';
 import AuthModal from "../components/AuthModal";
@@ -203,19 +200,19 @@ export default function Home({ login, register }) {
   // Data Features
   const features = [
     {
+      icon: <MapPin className="w-8 h-8" />,
+      title: 'Location Strategist',
+      description: 'AI-powered location analysis to help MSMEs identify optimal business locations and assess market potential in specific areas',
+    },
+    {
       icon: <Brain className="w-8 h-8" />,
-      title: 'AI Yield Analysis',
-      description: 'Advanced AI algorithms analyze investment yield potential and optimize financial strategies',
+      title: 'Financial Yield Advisor',
+      description: 'Smart financial automation that analyzes yield potential and provides strategic financial advice for optimized returns',
     },
     {
       icon: <Zap className="w-8 h-8" />,
       title: 'Automation Tools',
       description: 'Streamline financial workflows with intelligent automation for reporting and compliance',
-    },
-    {
-      icon: <Shield className="w-8 h-8" />,
-      title: 'Strategic Advisor',
-      description: 'Personalized financial guidance and risk assessment for sustainable growth',
     }
   ];
 

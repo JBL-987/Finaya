@@ -8,6 +8,14 @@ import FinancialManagementContent from "../components/accountant/FinancialManage
 function FinancialManagement() {
   const [activeMainCategory, setActiveMainCategory] = useState("accountant");
   const [activeSubTab, setActiveSubTab] = useState("data-input");
+  const [selectedCurrency, setSelectedCurrency] = useState(
+    localStorage.getItem('selectedCurrency') || 'IDR'
+  );
+
+  // Save currency to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('selectedCurrency', selectedCurrency);
+  }, [selectedCurrency]);
 
   // Handle transactions loaded from content component
   const handleTransactionsLoaded = (transactions) => {
@@ -32,6 +40,8 @@ function FinancialManagement() {
           <FinancialManagementHeader
             activeMainCategory={activeMainCategory}
             activeSubTab={activeSubTab}
+            selectedCurrency={selectedCurrency}
+            setSelectedCurrency={setSelectedCurrency}
           />
 
           {/* Content area */}
@@ -39,6 +49,8 @@ function FinancialManagement() {
             activeMainCategory={activeMainCategory}
             activeSubTab={activeSubTab}
             onLoadTransactions={handleTransactionsLoaded}
+            selectedCurrency={selectedCurrency}
+            setSelectedCurrency={setSelectedCurrency}
           />
         </div>
       </div>
