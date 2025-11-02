@@ -166,7 +166,7 @@ const Recommendations = ({ transactions }) => {
         {loading ? (
           <div className="flex flex-col justify-center items-center py-10 space-y-2">
             <Loader className="animate-spin text-white h-6 w-6" />
-            <div className="text-white text-sm">Analyzing with Qwen AI...</div>
+            <div className="text-white text-sm">Generating strategic recommendations...</div>
           </div>
         ) : (
         <div className="space-y-4">
@@ -182,7 +182,7 @@ const Recommendations = ({ transactions }) => {
                   <div className="flex items-center justify-between">
                     <h3 className="text-md font-medium text-white">{recommendation.title}</h3>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      recommendation.impact === 'High' 
+                      recommendation.impact === 'High'
                         ? 'bg-yellow-900/30 text-yellow-400'
                         : recommendation.impact === 'Medium'
                         ? 'bg-blue-900/30 text-blue-400'
@@ -236,7 +236,7 @@ const Recommendations = ({ transactions }) => {
         </h2>
         <div className="bg-gray-800 rounded-lg p-4">
           <p className="text-gray-300">
-            Our AI has analyzed your financial data and business operations to generate these recommendations. 
+            Our AI has analyzed your financial data and business operations to generate these recommendations.
             To maximize the benefits, we suggest implementing them in the following order:
           </p>
           {loading ? (

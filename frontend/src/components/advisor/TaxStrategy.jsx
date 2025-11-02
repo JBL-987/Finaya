@@ -31,7 +31,7 @@ const TaxStrategy = ({ transactions }) => {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         if (transactions.length > 0) {
           analyzeTaxStrategy(transactions);
         } else {
@@ -73,18 +73,31 @@ const TaxStrategy = ({ transactions }) => {
         .filter(t => t.transactionType === 'expense')
         .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
-      // Update tax params based on financial data
-      const defaultFilingStatus = 'single';
-      const userIncome = Math.max(totalIncome, 0);
+      // Determine filing status based on income patterns (simplified)
+      const defaultFilingStatus = totalIncome > 100000 ? 'married_filing_jointly' : 'single';
+
+      // Categorize expenses for tax purposes
+      const businessExpenses = transactions
+        .filter(t => t.category?.toLowerCase().includes('business') || t.category?.toLowerCase().includes('office'))
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+
+      const medicalExpenses = transactions
+        .filter(t => t.category?.toLowerCase().includes('medical') || t.category?.toLowerCase().includes('health'))
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+
+      const charitableExpenses = transactions
+        .filter(t => t.category?.toLowerCase().includes('charitable') || t.category?.toLowerCase().includes('donation'))
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+
       const expenseBreakdown = {
-        business: totalExpenses * 0.3,
-        personal: totalExpenses * 0.7,
-        medical: totalExpenses * 0.08,
-        charitable: totalExpenses * 0.05
+        business: businessExpenses || totalExpenses * 0.3,
+        personal: totalExpenses * 0.5,
+        medical: medicalExpenses || totalExpenses * 0.08,
+        charitable: charitableExpenses || totalExpenses * 0.05
       };
 
       setTaxParams({
-        income_amount: userIncome,
+        income_amount: Math.max(totalIncome, 0),
         expense_breakdown: expenseBreakdown,
         filing_status: defaultFilingStatus
       });
@@ -468,13 +481,13 @@ const TaxStrategy = ({ transactions }) => {
                 className={`px-6 py-3 rounded-lg font-medium transition-colors ${
                   generatingStrategy || taxParams.income_amount === 0
                     ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : 'bg-gradient-to-r from-yellow-600 to-amber-500 hover:from-yellow-700 hover:to-amber-600 text-white'
                 }`}
               >
                 {generatingStrategy ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                    Analyzing Tax Optimization...
+                    Generating tax optimization strategy...
                   </div>
                 ) : (
                   'Generate AI Tax Strategy'

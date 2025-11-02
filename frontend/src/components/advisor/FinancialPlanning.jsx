@@ -91,61 +91,33 @@ const FinancialPlanning = ({ transactions }) => {
   const analyzeFinancialPlan = async (transactions) => {
     try {
       console.log("Analyzing financial plan with transactions:", transactions.length);
-      const logTrailsTransactions = await getTransactionsForDocument();
 
-      console.log("Log trails transactions:", logTrailsTransactions.length);
-      const combinedTransactions = [...transactions, ...logTrailsTransactions];
-      
-      console.log("Combined transactions:", combinedTransactions.length);
-      const totalIncome = combinedTransactions
+      // Calculate financial metrics from transactions
+      const totalIncome = transactions
         .filter(t => t.transactionType === 'income')
-        .reduce((sum, t) => {
-          const amount = parseFloat(t.amount || 0);
-          console.log(`Income transaction: ${t.description}, amount: ${amount}`);
-          return sum + amount;
-        }, 0);
-      console.log("Total income calculated:", totalIncome);
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
-      // Perbaiki perhitungan expenses
-      const totalExpenses = combinedTransactions
+      const totalExpenses = transactions
         .filter(t => t.transactionType === 'expense')
-        .reduce((sum, t) => {
-          const amount = parseFloat(t.amount || 0);
-          console.log(`Expense transaction: ${t.description}, amount: ${amount}`);
-          return sum + amount;
-        }, 0);
-      console.log("Total expenses calculated:", totalExpenses);
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
-      // Perbaiki perhitungan assets
-      const totalAssets = combinedTransactions
-        .filter(t => t.category === 'asset' || t.transactionType === 'income')
-        .reduce((sum, t) => {
-          const amount = parseFloat(t.amount || 0);
-          console.log(`Asset transaction: ${t.description}, amount: ${amount}`);
-          return sum + amount;
-        }, 0);
-      console.log("Total assets calculated:", totalAssets);
+      // Calculate assets (income + asset purchases)
+      const totalAssets = transactions
+        .filter(t => t.transactionType === 'income' || t.category?.toLowerCase().includes('asset'))
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
-      // Perbaiki perhitungan liabilities
-      const totalLiabilities = combinedTransactions
-        .filter(t => t.category === 'liability' || t.category === 'debt')
-        .reduce((sum, t) => {
-          const amount = parseFloat(t.amount || 0);
-          console.log(`Liability transaction: ${t.description}, amount: ${amount}`);
-          return sum + amount;
-        }, 0);
-      console.log("Total liabilities calculated:", totalLiabilities);
+      // Calculate liabilities (loans, debts)
+      const totalLiabilities = transactions
+        .filter(t => t.category?.toLowerCase().includes('liability') || t.category?.toLowerCase().includes('loan'))
+        .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
-      // Perbaiki perhitungan net worth
+      // Calculate net worth
       const calculatedNetWorth = totalAssets - totalLiabilities;
-      console.log("Calculated net worth:", calculatedNetWorth);
       setNetWorth(calculatedNetWorth);
-      
-      // Perbaiki perhitungan emergency fund
-      const monthlyExpenses = totalExpenses > 0 ? totalExpenses / 12 : 1; // Hindari pembagian dengan nol
-      const emergencyFundMonths = monthlyExpenses > 0 ? 
-        Math.floor((totalAssets / monthlyExpenses) * 100) / 100 : 0;
-      console.log("Emergency fund months:", emergencyFundMonths);
+
+      // Calculate emergency fund (assuming 3-6 months of expenses)
+      const monthlyExpenses = totalExpenses / 12;
+      const emergencyFundMonths = monthlyExpenses > 0 ? Math.min(totalAssets / monthlyExpenses, 12) : 0;
 
       setEmergencyFund({
         monthsCovered: emergencyFundMonths,
@@ -153,11 +125,9 @@ const FinancialPlanning = ({ transactions }) => {
         status: emergencyFundMonths >= 6 ? 'healthy' : emergencyFundMonths >= 3 ? 'moderate' : 'low'
       });
 
-      // Perbaiki perhitungan cash flow
-      const savingsRate = totalIncome > 0 ? 
-        ((totalIncome - totalExpenses) / totalIncome * 100).toFixed(1) : 0;
-      console.log("Savings rate:", savingsRate);
-      
+      // Calculate cash flow
+      const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome * 100).toFixed(1) : 0;
+
       setCashFlow({
         income: totalIncome,
         expenses: totalExpenses,
@@ -165,21 +135,6 @@ const FinancialPlanning = ({ transactions }) => {
         savingsRate: savingsRate
       });
 
-      // Update API goals based on calculated metrics
-      const emergencyFundGoal = financialGoals.find(g => g.name === 'Emergency Fund');
-      if (emergencyFundGoal) {
-        await updateGoalProgress(emergencyFundGoal.id, emergencyFundMonths);
-      }
-
-      const savingsGoal = financialGoals.find(g => g.name === 'Savings Rate Target');
-      if (savingsGoal) {
-        await updateGoalProgress(savingsGoal.id, parseFloat(savingsRate) || 0);
-      }
-
-      const debtGoal = financialGoals.find(g => g.name === 'Debt Reduction');
-      if (debtGoal) {
-        await updateGoalProgress(debtGoal.id, totalLiabilities);
-      }
     } catch (error) {
       console.error("Error in analyzeFinancialPlan:", error);
       setError(`Failed to analyze financial plan: ${error.message}`);
@@ -379,10 +334,10 @@ const FinancialPlanning = ({ transactions }) => {
               {emergencyFund.monthsCovered} months
             </p>
             <p className={`text-sm mt-1 ${
-              emergencyFund.status === 'healthy' ? 'text-green-500' : 
+              emergencyFund.status === 'healthy' ? 'text-green-500' :
               emergencyFund.status === 'moderate' ? 'text-yellow-500' : 'text-red-500'
             }`}>
-              {emergencyFund.status === 'healthy' ? 'Healthy' : 
+              {emergencyFund.status === 'healthy' ? 'Healthy' :
                emergencyFund.status === 'moderate' ? 'Moderate' : 'Low'} coverage
             </p>
           </div>
@@ -428,10 +383,10 @@ const FinancialPlanning = ({ transactions }) => {
                 </div>
                 <div className="w-1/2">
                   <div className="w-full bg-gray-700 rounded-full h-2.5">
-                    <div 
+                    <div
                       className={`h-2.5 rounded-full ${
                         goal.progress >= 100 ? 'bg-green-500' : 'bg-blue-500'
-                      }`} 
+                      }`}
                       style={{ width: `${goal.progress}%` }}
                     ></div>
                   </div>
@@ -457,7 +412,7 @@ const FinancialPlanning = ({ transactions }) => {
             <Lightbulb className="h-12 w-12 text-yellow-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-white mb-2">Get Personalized Financial Strategy</h3>
             <p className="text-gray-300 mb-6">
-              Generate a comprehensive AI-powered financial plan based on your financial data and risk tolerance.
+              Generate a comprehensive financial plan based on your financial data and risk tolerance.
             </p>
 
             {/* Risk tolerance assessment */}
@@ -505,7 +460,7 @@ const FinancialPlanning = ({ transactions }) => {
               className={`px-6 py-3 rounded-lg font-medium transition-colors ${
                 generatingPlan
                   ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-gradient-to-r from-yellow-600 to-amber-500 hover:from-yellow-700 hover:to-amber-600 text-white'
               }`}
             >
               {generatingPlan ? (

@@ -74,33 +74,96 @@ const Reports = ({
     return { totalIncome, totalExpenses, netIncome };
   };
 
-  const generateReport = (reportType) => {
+  const generateReport = async (reportType) => {
     const financialData = processFinancialData();
+
+    // Generate AI-powered report content
+    let aiContent = "";
+    try {
+      const aiResponse = await fetch('/api/v1/accounting/ai/financial-recommendations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          goals: [`Generate ${reportType} report`]
+        })
+      });
+
+      if (aiResponse.ok) {
+        const aiResult = await aiResponse.json();
+        if (aiResult.success && aiResult.recommendations) {
+          aiContent = aiResult.recommendations;
+        }
+      }
+    } catch (error) {
+      console.error('AI report generation failed:', error);
+    }
+
     const doc = new jsPDF();
     doc.setFontSize(20);
     doc.setTextColor(255, 255, 255); // white
-    doc.text("Report", 105, 15, { align: "center" });
+    doc.text(`${reportType.replace(/([A-Z])/g, ' $1').toUpperCase()} REPORT`, 105, 15, { align: "center" });
 
     doc.setFontSize(12);
     doc.setTextColor(255, 255, 255);
-    doc.text(`Type: ${reportType}`, 15, 25);
-    doc.text(`Generated on ${new Date().toLocaleDateString()}`, 15, 33);
+    doc.text(`Generated on ${new Date().toLocaleDateString()}`, 15, 25);
+    doc.text(`AI-Powered Financial Analysis`, 15, 33);
 
+    // Financial Summary Table
     autoTable(doc, {
       startY: 40,
-      head: [["Category", "Amount"]],
+      head: [["Financial Summary", "Amount"]],
       body: [
         ["Total Income", formatCurrency(financialData.totalIncome)],
         ["Total Expenses", formatCurrency(financialData.totalExpenses)],
         ["Net Income", formatCurrency(financialData.netIncome)],
+        ["Transaction Count", normalizedTransactions.length.toString()],
       ],
       styles: { fontSize: 10 },
       theme: "grid",
     });
 
+    let yPosition = doc.lastAutoTable.finalY + 20;
+
+    // AI Recommendations Section
+    if (aiContent) {
+      doc.setFontSize(14);
+      doc.text("AI Analysis & Recommendations", 15, yPosition);
+      yPosition += 10;
+
+      doc.setFontSize(10);
+      const splitRecommendations = doc.splitTextToSize(JSON.stringify(aiContent, null, 2), 180);
+      doc.text(splitRecommendations, 15, yPosition);
+    }
+
+    // Transaction Details Table
+    if (normalizedTransactions.length > 0) {
+      yPosition += 30;
+      doc.setFontSize(14);
+      doc.text("Transaction Details", 15, yPosition);
+      yPosition += 10;
+
+      const transactionData = normalizedTransactions.slice(0, 50).map(t => [
+        new Date(t.date).toLocaleDateString(),
+        t.description || 'N/A',
+        t.category || 'Uncategorized',
+        formatCurrency(t.amount),
+        t.transactionType
+      ]);
+
+      autoTable(doc, {
+        startY: yPosition,
+        head: [["Date", "Description", "Category", "Amount", "Type"]],
+        body: transactionData,
+        styles: { fontSize: 8 },
+        theme: "grid",
+      });
+    }
+
     const pdfBlob = doc.output("blob");
     const pdfUrl = URL.createObjectURL(pdfBlob);
-    const fileName = `${reportType}.pdf`;
+    const fileName = `${reportType}_AI_Report_${new Date().toISOString().split('T')[0]}.pdf`;
 
     setGeneratedReports((prev) => ({
       ...prev,

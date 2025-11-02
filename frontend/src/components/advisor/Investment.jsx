@@ -34,11 +34,21 @@ const Investment = ({ transactions }) => {
       .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
     const availableInvestment = Math.max(0, totalIncome - totalExpenses);
+    const monthlyIncome = totalIncome / 12;
+    const monthlyExpenses = totalExpenses / 12;
+    const disposableIncome = Math.max(0, monthlyIncome - monthlyExpenses);
+
+    // Determine risk tolerance based on savings rate
+    const savingsRate = monthlyIncome > 0 ? (disposableIncome / monthlyIncome) * 100 : 0;
+    let riskTolerance = 'moderate';
+    if (savingsRate > 30) riskTolerance = 'aggressive';
+    else if (savingsRate < 10) riskTolerance = 'conservative';
 
     // Update investment params based on financial data
     setInvestmentParams(prev => ({
       ...prev,
-      investment_amount: Math.min(availableInvestment * 0.2, 10000) || prev.investment_amount
+      risk_level: riskTolerance,
+      investment_amount: Math.min(disposableIncome * 0.2, 10000) || prev.investment_amount
     }));
 
     // Set basic recommendations initially
@@ -229,7 +239,7 @@ const Investment = ({ transactions }) => {
             className={`px-6 py-3 rounded-lg font-medium transition-colors ${
               generatingRecommendations
                 ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-gradient-to-r from-yellow-600 to-amber-500 hover:from-yellow-700 hover:to-amber-600 text-white'
             }`}
           >
             {generatingRecommendations ? (
@@ -289,7 +299,7 @@ const Investment = ({ transactions }) => {
         {loading ? (
           <div className="flex flex-col justify-center items-center py-10 space-y-2">
             <Loader className="animate-spin text-white h-6 w-6" />
-            <div className="text-white text-sm">Analyzing with Qwen AI...</div>
+            <div className="text-white text-sm">Generating personalized recommendations...</div>
           </div>
         ) : (
         <div className="space-y-4">
@@ -305,7 +315,7 @@ const Investment = ({ transactions }) => {
                   <div className="flex items-center justify-between">
                     <h3 className="text-md font-medium text-white">{recommendation.title}</h3>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      recommendation.impact === 'High' 
+                      recommendation.impact === 'High'
                         ? 'bg-yellow-900/30 text-yellow-400'
                         : recommendation.impact === 'Medium'
                         ? 'bg-blue-900/30 text-blue-400'
@@ -360,7 +370,7 @@ const Investment = ({ transactions }) => {
         </h2>
         <div className="bg-gray-800 rounded-lg p-4">
           <p className="text-gray-300">
-            Our AI has analyzed your portfolio data and market conditions to generate these investment recommendations. 
+            Our AI has analyzed your portfolio data and market conditions to generate these investment recommendations.
             To optimize your investment strategy, we suggest implementing them in the following order:
           </p>
           {loading ? (
@@ -406,7 +416,7 @@ const Investment = ({ transactions }) => {
               Growth Potential
             </span>
           </div>
-          
+
           <div className="bg-gray-800 rounded-lg p-4">
             <div className="flex items-center mb-3">
               <DollarSign className="h-5 w-5 text-green-400 mr-2" />
@@ -419,7 +429,7 @@ const Investment = ({ transactions }) => {
               Income Generation
             </span>
           </div>
-          
+
           <div className="bg-gray-800 rounded-lg p-4">
             <div className="flex items-center mb-3">
               <BarChart3 className="h-5 w-5 text-purple-400 mr-2" />
@@ -432,7 +442,7 @@ const Investment = ({ transactions }) => {
               Diversification
             </span>
           </div>
-          
+
           <div className="bg-gray-800 rounded-lg p-4">
             <div className="flex items-center mb-3">
               <Percent className="h-5 w-5 text-yellow-400 mr-2" />
@@ -445,7 +455,7 @@ const Investment = ({ transactions }) => {
               High Risk/Reward
             </span>
           </div>
-          
+
           <div className="bg-gray-800 rounded-lg p-4">
             <div className="flex items-center mb-3">
               <LineChart className="h-5 w-5 text-red-400 mr-2" />
@@ -458,7 +468,7 @@ const Investment = ({ transactions }) => {
               Tangible Asset
             </span>
           </div>
-          
+
           <div className="bg-gray-800 rounded-lg p-4">
             <div className="flex items-center mb-3">
               <LineChart className="h-5 w-5 text-blue-400 mr-2" />

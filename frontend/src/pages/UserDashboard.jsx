@@ -37,6 +37,8 @@ const UserDashboard = () => {
   const [error, setError] = useState(null);
   const [analyses, setAnalyses] = useState([]);
   const [dashboardStats, setDashboardStats] = useState(null);
+  const [financialData, setFinancialData] = useState([]);
+  const [financialReports, setFinancialReports] = useState(null);
   const [selectedCurrency, setSelectedCurrency] = useState(
     localStorage.getItem('selectedCurrency') || 'USD'
   );
@@ -57,6 +59,9 @@ const UserDashboard = () => {
         setUser(userData);
         setAnalyses(analysesData);
         generateDashboardStats(analysesData);
+
+        // Fetch financial data from Supabase
+        await fetchFinancialData();
       } catch (err) {
         setError('Failed to load dashboard data');
         console.error('Error fetching dashboard data:', err);
@@ -67,6 +72,30 @@ const UserDashboard = () => {
 
     fetchAllData();
   }, []);
+
+  const fetchFinancialData = async () => {
+    try {
+      // Fetch transactions from accounting API
+      const transactionsResponse = await fetch('/api/v1/accounting/transactions');
+      if (transactionsResponse.ok) {
+        const transactionsData = await transactionsResponse.json();
+        if (transactionsData.success) {
+          setFinancialData(transactionsData.transactions);
+        }
+      }
+
+      // Fetch financial reports
+      const reportsResponse = await fetch('/api/v1/accounting/report');
+      if (reportsResponse.ok) {
+        const reportsData = await reportsResponse.json();
+        if (reportsData.success) {
+          setFinancialReports(reportsData);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching financial data:', error);
+    }
+  };
 
   const generateDashboardStats = (analysesData) => {
     const stats = {
@@ -81,9 +110,14 @@ const UserDashboard = () => {
           const loc = curr.location_name || curr.location;
           acc[loc] = (acc[loc] || 0) + 1;
           return acc;
-        }, {}) : {}
+        }, {}) : {},
+      totalTransactions: financialData.length,
+      totalIncome: financialData.filter(t => t.transactionType === 'income').reduce((sum, t) => sum + parseFloat(t.amount || 0), 0),
+      totalExpenses: financialData.filter(t => t.transactionType === 'expense').reduce((sum, t) => sum + parseFloat(t.amount || 0), 0),
+      netProfit: 0
     };
 
+    stats.netProfit = stats.totalIncome - stats.totalExpenses;
     stats.topLocation = Object.entries(stats.topLocation)
       .sort(([,a], [,b]) => b - a)[0]?.[0] || 'None';
 
@@ -277,88 +311,97 @@ const UserDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Header Section */}
-      <div className="bg-gray-900">
+      <div className="bg-gray-900 border-b border-blue-900/30">
         <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-          {/* Empty header content */}
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-white mb-4">Financial Dashboard</h1>
+            <p className="text-gray-400 text-lg">Comprehensive overview of your financial data and insights</p>
+          </div>
         </div>
       </div>
 
       {/* Key Metrics Cards */}
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 border border-blue-500/30 rounded-xl p-6 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-4 shadow-md">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-300 text-sm font-medium">Total Analyses</p>
-                <p className="text-3xl font-bold text-white mt-1">{dashboardStats?.totalAnalyses || 0}</p>
+                <p className="text-gray-400 text-sm font-medium">Total Transactions</p>
+                <p className="text-2xl font-bold text-white mt-1">{dashboardStats?.totalTransactions || 0}</p>
                 <p className="text-blue-400 text-xs mt-1 flex items-center">
                   <TrendingUp className="w-3 h-3 mr-1" />
+                  Financial records
+                </p>
+              </div>
+              <BarChart3 className="h-6 w-6 text-blue-400" />
+            </div>
+          </div>
+
+          <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-4 shadow-md">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm font-medium">Total Income</p>
+                <p className="text-2xl font-bold text-white mt-1">
+                  {formatCurrency(Math.round(dashboardStats?.totalIncome || 0), selectedCurrency)}
+                </p>
+                <p className="text-blue-400 text-xs mt-1 flex items-center">
+                  <Target className="w-3 h-3 mr-1" />
+                  Revenue streams
+                </p>
+              </div>
+              <Award className="h-6 w-6 text-blue-400" />
+            </div>
+          </div>
+
+          <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-4 shadow-md">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm font-medium">Net Profit</p>
+                <p className="text-2xl font-bold text-white mt-1">
+                  {formatCurrency(Math.round(dashboardStats?.netProfit || 0), selectedCurrency)}
+                </p>
+                <p className="text-blue-400 text-xs mt-1 flex items-center">
+                  <TrendingUp className="w-3 h-3 mr-1" />
+                  {(dashboardStats?.netProfit || 0) >= 0 ? 'Positive' : 'Negative'} performance
+                </p>
+              </div>
+              <Star className="h-6 w-6 text-blue-400" />
+            </div>
+          </div>
+
+          <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-4 shadow-md">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm font-medium">Business Analyses</p>
+                <p className="text-2xl font-bold text-white mt-1">{dashboardStats?.totalAnalyses || 0}</p>
+                <p className="text-blue-400 text-xs mt-1 flex items-center">
+                  <Layers className="w-3 h-3 mr-1" />
                   +{dashboardStats?.thisWeekAnalyses || 0} this week
                 </p>
               </div>
-              <BarChart3 className="h-8 w-8 text-blue-400" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 border border-green-500/30 rounded-xl p-6 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-300 text-sm font-medium">Avg. Revenue</p>
-                <p className="text-3xl font-bold text-white mt-1">
-                  {formatCurrency(Math.round(dashboardStats?.avgMonthlyRevenue || 0), selectedCurrency)}
-                </p>
-                <p className="text-green-400 text-xs mt-1 flex items-center">
-                  <Target className="w-3 h-3 mr-1" />
-                  Monthly projection
-                </p>
-              </div>
-              <Award className="h-8 w-8 text-green-400" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 border border-yellow-500/30 rounded-xl p-6 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-yellow-300 text-sm font-medium">Active Locations</p>
-                <p className="text-3xl font-bold text-white mt-1">{new Set(analyses.map(a => a.location)).size}</p>
-                <p className="text-yellow-400 text-xs mt-1 flex items-center">
-                  <MapPin className="w-3 h-3 mr-1" />
-                  {dashboardStats?.topLocation}
-                </p>
-              </div>
-              <Star className="h-8 w-8 text-yellow-400" />
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 border border-purple-500/30 rounded-xl p-6 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-300 text-sm font-medium">Analysis Types</p>
-                <p className="text-3xl font-bold text-white mt-1">{analysisTypeData.length}</p>
-                <p className="text-purple-400 text-xs mt-1 flex items-center">
-                  <Layers className="w-3 h-3 mr-1" />
-                  Business focus
-                </p>
-              </div>
-              <Activity className="h-8 w-8 text-purple-400" />
+              <Activity className="h-6 w-6 text-blue-400" />
             </div>
           </div>
         </div>
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
-          {/* Activity Trend Chart */}
-          <div className="lg:col-span-2 xl:col-span-2 bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+          {/* Financial Overview Chart */}
+          <div className="lg:col-span-2 xl:col-span-2 bg-gray-900 border border-blue-900/30 rounded-lg p-6 shadow-md">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-white">Activity Trends</h3>
+              <h3 className="text-xl font-semibold text-white">Financial Overview</h3>
               <div className="flex space-x-2">
                 <div className="flex items-center">
                   <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                  <span className="text-xs text-gray-400">Analyses</span>
+                  <span className="text-xs text-blue-400">Income</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                  <span className="text-xs text-red-400">Expenses</span>
                 </div>
                 <div className="flex items-center">
                   <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                  <span className="text-xs text-gray-400">Revenue</span>
+                  <span className="text-xs text-green-400">Profit</span>
                 </div>
               </div>
             </div>
@@ -366,11 +409,15 @@ const UserDashboard = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={activityData}>
                   <defs>
-                    <linearGradient id="analyses" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="income" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#fbbf24" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="expenses" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                     </linearGradient>
-                    <linearGradient id="revenue" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="profit" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                     </linearGradient>
@@ -389,32 +436,48 @@ const UserDashboard = () => {
                   <Area
                     type="monotone"
                     dataKey="analyses"
-                    stroke="#3b82f6"
+                    stroke="#fbbf24"
                     fillOpacity={1}
-                    fill="url(#analyses)"
+                    fill="url(#income)"
+                    name="Income"
                   />
-                  <Bar dataKey="revenue" fill="#10b981" opacity={0.6} />
+                  <Area
+                    type="monotone"
+                    dataKey="cumulative"
+                    stroke="#3b82f6"
+                    fillOpacity={0.6}
+                    fill="url(#expenses)"
+                    name="Expenses"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Analysis Type Distribution */}
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-            <h3 className="text-xl font-semibold text-white mb-4">Analysis Distribution</h3>
+          {/* Financial Breakdown */}
+          <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-6 shadow-md">
+            <h3 className="text-xl font-semibold text-white mb-4">Financial Breakdown</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
                   <Pie
-                    data={analysisTypeData}
+                    data={[
+                      { name: 'Income', value: dashboardStats?.totalIncome || 0, color: '#fbbf24' },
+                      { name: 'Expenses', value: dashboardStats?.totalExpenses || 0, color: '#3b82f6' },
+                      { name: 'Profit', value: Math.max(0, (dashboardStats?.netProfit || 0)), color: '#10b981' }
+                    ]}
                     cx="50%"
                     cy="50%"
                     innerRadius={40}
                     outerRadius={80}
                     paddingAngle={5}
-                    dataKey="count"
+                    dataKey="value"
                   >
-                    {analysisTypeData.map((entry, index) => (
+                    {[
+                      { name: 'Income', value: dashboardStats?.totalIncome || 0, color: '#fbbf24' },
+                      { name: 'Expenses', value: dashboardStats?.totalExpenses || 0, color: '#3b82f6' },
+                      { name: 'Profit', value: Math.max(0, (dashboardStats?.netProfit || 0)), color: '#10b981' }
+                    ].map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -430,26 +493,28 @@ const UserDashboard = () => {
               </ResponsiveContainer>
             </div>
             <div className="mt-4 space-y-2">
-              {analysisTypeData.map((type, index) => (
+              {[
+                { name: 'Income', value: dashboardStats?.totalIncome || 0, color: '#fbbf24' },
+                { name: 'Expenses', value: dashboardStats?.totalExpenses || 0, color: '#3b82f6' },
+                { name: 'Profit', value: Math.max(0, (dashboardStats?.netProfit || 0)), color: '#10b981' }
+              ].map((item, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: type.color }}></div>
-                    <span className="text-gray-300 text-sm capitalize">
-                      {type.type.replace('_', ' ')}
-                    </span>
+                    <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
+                    <span className="text-gray-300 text-sm">{item.name}</span>
                   </div>
-                  <span className="text-gray-400 text-sm">{type.count}</span>
+                  <span className="text-gray-400 text-sm">{formatCurrency(item.value, selectedCurrency)}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Regression Analysis */}
-          <div className="lg:col-span-2 xl:col-span-2 bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+          <div className="lg:col-span-2 xl:col-span-2 bg-gray-900 border border-blue-900/30 rounded-lg p-6 shadow-md">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-white">Revenue Analysis</h3>
               <div className="flex items-center">
-                <Zap className="w-4 h-4 text-yellow-400 mr-2" />
+                <Zap className="w-4 h-4 text-blue-400 mr-2" />
                 <span className="text-xs text-gray-400">Predicted vs Actual</span>
               </div>
             </div>
@@ -474,24 +539,35 @@ const UserDashboard = () => {
             </div>
           </div>
 
-          {/* Quick Stats Sidebar */}
-          <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 space-y-4">
-            <h3 className="text-xl font-semibold text-white mb-6">Quick Overview</h3>
+          {/* Financial Insights */}
+          <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-6 shadow-md space-y-4">
+            <h3 className="text-xl font-semibold text-white mb-6">Financial Insights</h3>
 
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="flex-shrink-0">
-                  <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                    <Clock className="h-4 w-4 text-blue-400" />
+                  <div className="h-8 w-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                    <TrendingUp className="h-4 w-4 text-yellow-400" />
                   </div>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white">Last Analysis</p>
-                  <p className="text-xs text-gray-400">
-                    {analyses.length > 0 ?
-                      format(new Date(analyses[0].created_at), 'MMM dd, yyyy') :
-                      'No analyses yet'
-                    }
+                  <p className="text-sm font-medium text-white">Monthly Performance</p>
+                  <p className="text-xs text-yellow-400">
+                    {dashboardStats?.netProfit >= 0 ? '+' : ''}{formatCurrency(dashboardStats?.netProfit || 0, selectedCurrency)} this month
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                    <Target className="h-4 w-4 text-blue-400" />
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-white">Transaction Health</p>
+                  <p className="text-xs text-blue-400">
+                    {dashboardStats?.totalTransactions || 0} transactions recorded
                   </p>
                 </div>
               </div>
@@ -499,26 +575,12 @@ const UserDashboard = () => {
               <div className="flex items-center space-x-3">
                 <div className="flex-shrink-0">
                   <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <Target className="h-4 w-4 text-green-400" />
+                    <Award className="h-4 w-4 text-green-400" />
                   </div>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white">Success Rate</p>
-                  <p className="text-xs text-gray-400">
-                    {analyses.length > 0 ? '100%' : '0%'} completion rate
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <div className="h-8 w-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
-                    <Award className="h-4 w-4 text-yellow-400" />
-                  </div>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white">Member Status</p>
-                  <p className="text-xs text-gray-400">Active since {format(new Date(user.created_at), 'MMM yyyy')}</p>
+                  <p className="text-sm font-medium text-white">Account Status</p>
+                  <p className="text-xs text-green-400">Active member</p>
                 </div>
               </div>
             </div>
@@ -527,41 +589,74 @@ const UserDashboard = () => {
             <div className="border-t border-gray-700 pt-4 space-y-3">
               <button
                 onClick={() => window.location.href = '/'}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center"
+                className="w-full bg-gradient-to-r from-yellow-600 to-amber-500 hover:from-yellow-700 hover:to-amber-600 text-white py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-yellow-500/25"
               >
                 <Activity className="w-4 h-4 mr-2" />
-                Start New Analysis
+                New Business Analysis
               </button>
               <button
                 onClick={() => window.location.href = '/financial'}
-                className="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center"
+                className="w-full bg-gray-800 text-blue-400 border border-blue-900/30 hover:bg-gray-700 py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center"
               >
                 <BarChart3 className="w-4 h-4 mr-2" />
-                Financial Advisor
+                Financial Management
               </button>
             </div>
           </div>
         </div>
 
-        {/* Recent Activity Feed */}
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+        {/* Recent Financial Activity */}
+        <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-6 shadow-md">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-white">Recent Analyses</h3>
-            <button className="text-blue-400 hover:text-blue-300 text-sm font-medium">
+            <h3 className="text-xl font-semibold text-white">Recent Transactions & Analyses</h3>
+            <button className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors">
               View All History
             </button>
           </div>
 
-          {analyses.length === 0 ? (
+          {financialData.length === 0 && analyses.length === 0 ? (
             <div className="text-center py-8">
               <BarChart3 className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-              <p className="text-gray-400 mb-2">No analyses yet</p>
-              <p className="text-gray-500 text-sm">Start your first business analysis to see insights here</p>
+              <p className="text-gray-400 mb-2">No financial data yet</p>
+              <p className="text-gray-500 text-sm">Start by adding transactions or running business analyses</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {analyses.slice(0, 5).map((analysis) => (
-                <div key={analysis.id} className="flex items-center space-x-4 p-4 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 transition-colors">
+              {/* Recent Transactions */}
+              {financialData.slice(0, 3).map((transaction) => (
+                <div key={`transaction-${transaction.id}`} className="flex items-center space-x-4 p-4 bg-gray-800/50 rounded-lg hover:bg-gray-800/70 transition-all duration-300">
+                  <div className="flex-shrink-0">
+                    <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-blue-400" />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-white font-medium truncate">{transaction.description}</p>
+                      <span className="text-xs text-blue-400">
+                        {formatCurrency(transaction.amount, selectedCurrency)}
+                      </span>
+                    </div>
+                    <p className="text-gray-400 text-sm truncate">{transaction.category}</p>
+                    <div className="flex items-center mt-1">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        transaction.transactionType === 'income'
+                          ? 'bg-green-500/20 text-green-400'
+                          : 'bg-red-500/20 text-red-400'
+                      }`}>
+                        {transaction.transactionType}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <ChevronRight className="h-5 w-5 text-gray-500" />
+                  </div>
+                </div>
+              ))}
+
+              {/* Recent Analyses */}
+              {analyses.slice(0, 2).map((analysis) => (
+                <div key={`analysis-${analysis.id}`} className="flex items-center space-x-4 p-4 bg-gray-800/50 rounded-lg hover:bg-gray-800/70 transition-all duration-300">
                   <div className="flex-shrink-0">
                     <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center">
                       <MapPin className="h-5 w-5 text-blue-400" />
@@ -570,13 +665,13 @@ const UserDashboard = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="text-white font-medium truncate">{analysis.name}</p>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-blue-400">
                         {format(new Date(analysis.created_at), 'MMM dd')}
                       </span>
                     </div>
                     <p className="text-gray-400 text-sm truncate">{analysis.location}</p>
                     <div className="flex items-center mt-1">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">
                         {analysis.analysis_type}
                       </span>
                     </div>
@@ -587,10 +682,10 @@ const UserDashboard = () => {
                 </div>
               ))}
 
-              {analyses.length > 5 && (
+              {(financialData.length > 3 || analyses.length > 2) && (
                 <div className="text-center pt-4">
-                  <button className="text-blue-400 hover:text-blue-300 text-sm font-medium">
-                    Load more analyses...
+                  <button className="text-yellow-400 hover:text-yellow-300 text-sm font-medium transition-colors">
+                    Load more activity...
                   </button>
                 </div>
               )}

@@ -22,49 +22,49 @@ export default function Home({ login, register }) {
       try {
         const { gsap } = await import('gsap');
         const { ScrollTrigger } = await import('gsap/ScrollTrigger');
-        
+
         gsap.registerPlugin(ScrollTrigger);
 
         // Hero animation
-        gsap.fromTo('.hero-title', 
+        gsap.fromTo('.hero-title',
           { opacity: 0, y: 100 },
-          { 
-            opacity: 1, 
-            y: 0, 
-            duration: 1.2, 
+          {
+            opacity: 1,
+            y: 0,
+            duration: 1.2,
             ease: 'power3.out',
             stagger: 0.2
           }
         );
 
-        gsap.fromTo('.hero-subtitle', 
+        gsap.fromTo('.hero-subtitle',
           { opacity: 0, y: 50 },
-          { 
-            opacity: 1, 
-            y: 0, 
-            duration: 1, 
+          {
+            opacity: 1,
+            y: 0,
+            duration: 1,
             delay: 0.6,
             ease: 'power2.out'
           }
         );
 
-        gsap.fromTo('.hero-buttons', 
+        gsap.fromTo('.hero-buttons',
           { opacity: 0, y: 30 },
-          { 
-            opacity: 1, 
-            y: 0, 
-            duration: 1, 
+          {
+            opacity: 1,
+            y: 0,
+            duration: 1,
             delay: 0.8,
             ease: 'power2.out'
           }
         );
 
         // Stats animation
-        gsap.fromTo('.stat-item', 
+        gsap.fromTo('.stat-item',
           { opacity: 0, scale: 0.8 },
-          { 
-            opacity: 1, 
-            scale: 1, 
+          {
+            opacity: 1,
+            scale: 1,
             duration: 0.8,
             stagger: 0.1,
             scrollTrigger: {
@@ -77,11 +77,11 @@ export default function Home({ login, register }) {
         );
 
         // Features animation
-        gsap.fromTo('.feature-card', 
+        gsap.fromTo('.feature-card',
           { opacity: 0, y: 60 },
-          { 
-            opacity: 1, 
-            y: 0, 
+          {
+            opacity: 1,
+            y: 0,
             duration: 1,
             stagger: 0.2,
             scrollTrigger: {
@@ -94,11 +94,11 @@ export default function Home({ login, register }) {
         );
 
         // How it works animation
-        gsap.fromTo('.step-item', 
+        gsap.fromTo('.step-item',
           { opacity: 0, x: -50 },
-          { 
-            opacity: 1, 
-            x: 0, 
+          {
+            opacity: 1,
+            x: 0,
             duration: 0.8,
             stagger: 0.15,
             scrollTrigger: {
@@ -111,11 +111,11 @@ export default function Home({ login, register }) {
         );
 
         // Countries animation
-        gsap.fromTo('.country-card', 
+        gsap.fromTo('.country-card',
           { opacity: 0, scale: 0.5 },
-          { 
-            opacity: 1, 
-            scale: 1, 
+          {
+            opacity: 1,
+            scale: 1,
             duration: 0.6,
             stagger: 0.05,
             scrollTrigger: {
@@ -128,11 +128,11 @@ export default function Home({ login, register }) {
         );
 
         // Testimonials animation
-        gsap.fromTo('.testimonial-card', 
+        gsap.fromTo('.testimonial-card',
           { opacity: 0, y: 40 },
-          { 
-            opacity: 1, 
-            y: 0, 
+          {
+            opacity: 1,
+            y: 0,
             duration: 0.8,
             stagger: 0.1,
             scrollTrigger: {
@@ -145,11 +145,11 @@ export default function Home({ login, register }) {
         );
 
         // CTA animation
-        gsap.fromTo('.cta-content', 
+        gsap.fromTo('.cta-content',
           { opacity: 0, scale: 0.9 },
-          { 
-            opacity: 1, 
-            scale: 1, 
+          {
+            opacity: 1,
+            scale: 1,
             duration: 1,
             scrollTrigger: {
               trigger: '#cta',
@@ -200,19 +200,19 @@ export default function Home({ login, register }) {
   // Data Features
   const features = [
     {
-      icon: <MapPin className="w-8 h-8" />,
-      title: 'Location Strategist',
-      description: 'AI-powered location analysis to help MSMEs identify optimal business locations and assess market potential in specific areas',
+      icon: <Calculator className="w-8 h-8" />,
+      title: 'Intelligent Accounting',
+      description: 'Automated transaction processing, categorization, and financial reporting with AI-powered insights for accurate bookkeeping',
     },
     {
       icon: <Brain className="w-8 h-8" />,
-      title: 'Financial Yield Advisor',
-      description: 'Smart financial automation that analyzes yield potential and provides strategic financial advice for optimized returns',
+      title: 'Strategic Financial Advisor',
+      description: 'Comprehensive financial planning, investment recommendations, and tax optimization strategies tailored to your business goals',
     },
     {
       icon: <Zap className="w-8 h-8" />,
-      title: 'Automation Tools',
-      description: 'Streamline financial workflows with intelligent automation for reporting and compliance',
+      title: 'Automated Workflows',
+      description: 'Streamline financial operations with intelligent automation for data validation, compliance reporting, and performance monitoring',
     }
   ];
 
@@ -226,26 +226,26 @@ export default function Home({ login, register }) {
   const howItWorks = [
     {
       step: 1,
-      title: 'Input Financial Data',
-      desc: 'Upload or manually enter your financial data and investment details',
+      title: 'Data Input & Processing',
+      desc: 'Upload documents or manually enter transactions - our AI automatically processes and categorizes your financial data',
       icon: <Calculator className="w-6 h-6" />
     },
     {
       step: 2,
-      title: 'AI Analysis',
-      desc: 'Advanced algorithms analyze yield potential and risk factors',
+      title: 'Intelligent Analysis',
+      desc: 'Advanced AI algorithms analyze patterns, validate data accuracy, and generate comprehensive financial insights',
       icon: <Brain className="w-6 h-6" />
     },
     {
       step: 3,
-      title: 'Get Strategic Insights',
-      desc: 'Receive personalized yield optimization recommendations',
+      title: 'Strategic Recommendations',
+      desc: 'Receive personalized financial planning, investment strategies, and tax optimization recommendations',
       icon: <TrendingUp className="w-6 h-6" />
     },
     {
       step: 4,
-      title: 'Automate & Optimize',
-      desc: 'Deploy automation tools for continuous financial management',
+      title: 'Automated Workflows',
+      desc: 'Deploy intelligent automation for continuous monitoring, reporting, and compliance management',
       icon: <Zap className="w-6 h-6" />
     }
   ];
@@ -264,39 +264,39 @@ export default function Home({ login, register }) {
 
   const testimonials = [
     {
-      quote: "Finaya revolutionized my financial management! The AI yield analysis increased my investment returns by 25% and automation handled all compliance reporting.",
-      author: "Rahman S., Investment Manager",
+      quote: "Finaya transformed our accounting process completely! The AI-powered transaction categorization and automated validation saved us 15 hours per week while ensuring 100% accuracy in our financial reporting.",
+      author: "Sarah Chen, CFO at TechStart Inc.",
       rating: 5,
     },
     {
-      quote: "The strategic advisor feature is incredible. It provided personalized recommendations that optimized my portfolio and saved thousands in unnecessary fees.",
-      author: "Maya L., Financial Advisor",
+      quote: "The financial planning and tax strategy features are game-changing. We optimized our tax savings by 30% and developed a comprehensive investment strategy that increased our portfolio returns significantly.",
+      author: "Michael Rodriguez, Business Owner",
       rating: 5,
     },
     {
-      quote: "Automating my financial workflows with Finaya freed up 20 hours per week. The yield optimization suggestions have been spot on every time.",
-      author: "Andi K., Startup Founder",
+      quote: "As a growing MSME, Finaya's automated workflows and intelligent insights helped us scale efficiently. The document processing and compliance automation features are incredibly powerful.",
+      author: "Priya Patel, Operations Manager",
       rating: 5,
     },
   ];
 
   return (
-    <main className="overflow-hidden bg-black">
+    <main className="overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Hero Section */}
       <section className="min-h-screen relative flex flex-col justify-center items-center px-4 pt-20">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-black z-0"></div>
-        
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 z-0"></div>
+
         <div className="max-w-6xl z-20 text-center relative">
           <h1 className="hero-title text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 text-white leading-tight">
-            Financial Automation
+            AI-Powered Financial
             <br />
-            <span className="text-yellow-400">Yield Advisor</span>
+            <span className="text-yellow-400">Management Platform</span>
           </h1>
 
           <p className="hero-subtitle text-lg sm:text-xl md:text-2xl mb-8 text-gray-300 max-w-4xl mx-auto leading-relaxed">
-            Intelligent financial automation platform designed for MSMEs that analyzes yield potential and provides strategic financial advice for optimized returns
+            Comprehensive financial automation for MSMEs featuring intelligent accounting, strategic advisory, and automated workflows for optimized business performance
           </p>
-          
+
           <div className="hero-buttons flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <button
               onClick={() => setShowAuthModal(true)}
@@ -334,8 +334,8 @@ export default function Home({ login, register }) {
       </section>
 
       {/* Auth Modal */}
-      <AuthModal 
-        isOpen={showAuthModal} 
+      <AuthModal
+        isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         login={login}
         register={register}
@@ -486,16 +486,30 @@ export default function Home({ login, register }) {
       </section>
 
       {/* CTA Section */}
-      <section id="cta" className="py-20 px-4 bg-yellow-600">
+      <section id="cta" className="py-20 px-4 bg-gradient-to-r from-yellow-600 via-yellow-500 to-amber-500">
         <div className="cta-content max-w-4xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
-            Ready to optimize your financial future?
+            Transform Your Financial Management Today
           </h2>
           <p className="text-xl text-yellow-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of MSMEs maximizing returns with AI-driven financial automation
+            Join thousands of MSMEs achieving financial excellence with intelligent automation and strategic insights
           </p>
-          <p className="text-sm text-yellow-100 mt-6">
-            No credit card required • Free forever plan available
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className="bg-white text-yellow-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg"
+            >
+              Start Free Trial
+            </button>
+            <a
+              href="#features"
+              className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-yellow-600 transition-colors"
+            >
+              Explore Features
+            </a>
+          </div>
+          <p className="text-sm text-yellow-100">
+            No credit card required • 14-day free trial • Cancel anytime
           </p>
         </div>
       </section>

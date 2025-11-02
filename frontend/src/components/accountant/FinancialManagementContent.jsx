@@ -250,7 +250,28 @@ export default function FinancialManagementContent({
 
       setTransactions(prevTransactions => [...prevTransactions, newTransaction]);
 
+      // Generate filename for manual entry (following the pattern in Workspace.jsx)
+      const dateStr = new Date(manualData.date).toISOString().split('T')[0];
+      const typeStr = manualData.transactionType.charAt(0).toUpperCase() + manualData.transactionType.slice(1);
+      const fileName = `${dateStr}_${typeStr}_${Date.now()}.pdf`;
+
+      // Create a file entry for the manual transaction in the workspace
+      const manualEntryFile = {
+        id: Date.now() + 1, // Ensure unique ID
+        name: fileName,
+        type: 'application/pdf',
+        size: 0, // Manual entries don't have actual file size
+        date: new Date().toISOString(),
+        status: 'processed', // Manual entries are automatically "processed"
+        isManualEntry: true,
+        transactionData: newTransaction
+      };
+
+      // Add to files list (this will appear in the Uncategorized folder)
+      setFiles(prevFiles => [...prevFiles, manualEntryFile]);
+
       addProcessingLog("Manual transaction saved successfully", "success");
+      addProcessingLog(`Manual entry saved to workspace: ${fileName}`, "info");
     } catch (error) {
       addProcessingLog(`Failed to save manual data: ${error.message}`, "error");
     }

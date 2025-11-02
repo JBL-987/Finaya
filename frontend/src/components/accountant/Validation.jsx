@@ -19,6 +19,29 @@ import {
   getTransactionsForDocument,
 } from "../../utils/documentPositionTracker";
 
+// AI analysis function for validation
+const performAIAnalysis = async (transactions) => {
+  try {
+    const response = await fetch('/api/v1/accounting/ai/analyze-patterns', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      return result;
+    } else {
+      console.error('AI analysis failed:', response.statusText);
+      return null;
+    }
+  } catch (error) {
+    console.error('AI analysis error:', error);
+    return null;
+  }
+};
+
 const Validation = ({
   transactions,
   onViewTransaction,
@@ -291,25 +314,24 @@ const Validation = ({
   };
 
   // Start the validation process
-  const startValidationProcess = () => {
+  const startValidationProcess = async () => {
     // Only start if not already validating
     if (isValidating) return;
 
     // Show a confirmation dialog
     Swal.fire({
       title: "Start Validation Process?",
-      text: "This will validate all transactions against their source documents. Continue?",
+      text: "This will validate all transactions using AI analysis and generate reports. Continue?",
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#3085d6",
       cancelButtonColor: "#d33",
       confirmButtonText: "Yes, start validation",
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
         // Get transactions that need validation
         const transactionsToValidate = transactions.filter(
           (t) =>
-            t.sourceFile &&
             !verifiedTransactions[t.id] &&
             !flaggedTransactions[t.id]
         );
@@ -317,7 +339,7 @@ const Validation = ({
         if (transactionsToValidate.length === 0) {
           Swal.fire({
             title: "No Transactions to Validate",
-            text: "All transactions have already been verified or don't have source documents.",
+            text: "All transactions have already been verified.",
             icon: "info",
           });
           return;
@@ -336,26 +358,44 @@ const Validation = ({
 
         // Process all transactions first to calculate stats
         transactionsToValidate.forEach((transaction) => {
-          // Find the source document
-          const sourceDocument = files.find(
-            (file) => file.name === transaction.sourceFile
-          );
-
-          // Determine validation status
-          if (!sourceDocument) {
+          // Perform validation checks
+          const validationResult = validateTransaction(transaction);
+          if (validationResult.status === "warning") {
+            stats.warning++;
+          } else if (validationResult.status === "error") {
             stats.error++;
           } else {
-            // Perform validation checks
-            const validationResult = validateTransaction(transaction);
-            if (validationResult.status === "warning") {
-              stats.warning++;
-            } else if (validationResult.status === "error") {
-              stats.error++;
-            } else {
-              stats.valid++;
-            }
+            stats.valid++;
           }
         });
+
+        // Perform AI analysis for validation
+        try {
+          const aiAnalysisResult = await performAIAnalysis(transactionsToValidate);
+          console.log("AI Analysis Result:", aiAnalysisResult);
+
+          // Update validation results with AI insights
+          if (aiAnalysisResult && aiAnalysisResult.analysis) {
+            // Process AI recommendations and update validation status
+            const updatedResults = validationResults.map(result => {
+              const aiInsight = aiAnalysisResult.analysis.find(
+                insight => insight.transaction_id === result.id
+              );
+              if (aiInsight) {
+                return {
+                  ...result,
+                  aiInsights: aiInsight,
+                  status: aiInsight.confidence > 0.8 ? "valid" : aiInsight.confidence > 0.5 ? "warning" : "error"
+                };
+              }
+              return result;
+            });
+            setValidationResults(updatedResults);
+          }
+        } catch (error) {
+          console.error("AI Analysis failed:", error);
+          // Continue with basic validation if AI fails
+        }
 
         // Start with the first transaction
         showTransactionValidation(transactionsToValidate, 0, stats);
