@@ -17,7 +17,7 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
             <img
               src="/Finaya_Logo.svg"
               alt="Finaya Logo"
-              className="h-12 w-20 sm:h-16 sm:w-24 object-contain"
+              className="h-12 w-20 sm:h-12 sm:w-24 object-contain"
             />
           </div>
         </div>

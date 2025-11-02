@@ -102,31 +102,34 @@ async def analyze_location_image(image_base64: str, image_metadata: Dict[str, An
     """
 
     prompt = f"""
-You are analyzing a map screenshot to determine area distributions for business location analysis.
+You are an expert urban planner analyzing a satellite/map image to determine land use distribution for business location analysis.
 
-In this Leaflet map image, the colors represent:
-- Yellow: Main roads
-- White: Secondary roads
-- Brown/Chocolate: Buildings (residential/commercial)
-- Light Gray: Open spaces (parking, plazas)
-- Green: Vegetative open spaces (parks, trees)
-- Blue: Water bodies (rivers, lakes)
+IMPORTANT: This is a map/satellite image showing a city area. Look for actual buildings, roads, and open spaces.
 
-Please analyze this image and provide the exact percentage distribution of these three categories:
+Analyze this map image and estimate the percentage distribution of land use in these THREE categories:
 
-1. RESIDENTIAL AREA: All buildings (brown/chocolate colored areas)
-2. ROAD AREA: All roads (yellow and white colored areas)
-3. OPEN SPACE AREA: All open spaces (light gray, green, and blue areas)
+1. **RESIDENTIAL AREAS**: Houses, apartment buildings, residential neighborhoods (typically gray/brown colored blocks)
+2. **ROAD/HIGHWAY AREAS**: Streets, roads, highways, parking lots (black/gray lines and areas)
+3. **OPEN SPACES**: Parks, empty lots, green areas, water bodies, undeveloped land (green, blue, or light colored areas)
 
-Image dimensions: {image_metadata.get('width', 800)}x{image_metadata.get('height', 600)} pixels
-Map scale: {image_metadata.get('scale', 1.0)} meters/pixel
+Image details:
+- Dimensions: {image_metadata.get('width', 800)}x{image_metadata.get('height', 600)} pixels
+- Scale: {image_metadata.get('scale', 1.0)} meters/pixel
+- This represents a city area for business analysis
 
-Please respond with ONLY the percentages in this exact format:
+CRITICAL: Most city areas should have a MIX of residential, roads, and open spaces. If you see mostly roads, look more carefully for buildings and open areas.
+
+Provide your analysis in EXACTLY this format:
 residential: XX%
 road: XX%
 open_space: XX%
 
-The three percentages must add up to 100%.
+Example response:
+residential: 45%
+road: 30%
+open_space: 25%
+
+Make sure the percentages add up to 100%.
 """
 
     # Convert base64 to data URL
@@ -186,6 +189,7 @@ The three percentages must add up to 100%.
                 )
 
             analysis_text = data["choices"][0]["message"]["content"]
+            print(f"DEBUG: AI Analysis Response: {analysis_text}")  # Debug log
 
             # Parse the response to extract percentages
             area_distribution = parse_area_distribution(analysis_text)
@@ -315,7 +319,7 @@ async def calculate_business_metrics(area_distribution: AreaDistribution, busine
         # Extract percentages
         residential = area_distribution.residential
         road = area_distribution.road
-        open_space = area_distribution.open_space
+        open_space = area_distribution.openSpace
 
         # Step 7: Calculate Current Gross Local Population (CGLP)
         cglp = GLOBAL_AVERAGE_DENSITY * area_sq_km
