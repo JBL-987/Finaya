@@ -30,7 +30,7 @@ const BusinessAnalysisApp = () => {
     currentStep: 0,
     steps: [
       { id: 1, name: 'Capture Screenshot', status: 'pending', detail: 'Capturing screenshot of selected area...', image: null },
-      { id: 2, name: 'Send to Finaya AI', status: 'pending', detail: 'Sending image to Finaya AI (gemini-2.5-pro)...', image: null },
+      { id: 2, name: 'Send to Finaya AI', status: 'pending', detail: 'Sending image to Finaya AI...', image: null },
       { id: 3, name: 'AI Color Analysis', status: 'pending', detail: 'AI analyzing color distribution (residential, roads, open spaces)...', data: null },
       { id: 4, name: 'Area Calculation', status: 'pending', detail: 'Calculating area from screenshot dimensions and scale...', data: null },
       { id: 5, name: 'Population Density', status: 'pending', detail: 'Calculating CGLP and road population density...', data: null },
@@ -195,11 +195,30 @@ const BusinessAnalysisApp = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       console.log('Capturing screenshot for location:', selectedLocation);
+
+      // Calculate dynamic zoom level based on building width - ZOOM IN MUCH MORE
+      const buildingWidth = parseFloat(businessParams.buildingWidth);
+      let zoomLevel = 18; // default - much more zoomed in
+
+      if (buildingWidth >= 50) {
+        zoomLevel = 16; // very wide buildings - still zoom in but less than smaller buildings
+      } else if (buildingWidth >= 30) {
+        zoomLevel = 17; // wide buildings - zoom in moderately
+      } else if (buildingWidth >= 20) {
+        zoomLevel = 18; // medium buildings - zoom in more
+      } else if (buildingWidth >= 10) {
+        zoomLevel = 19; // small buildings - zoom in significantly
+      } else {
+        zoomLevel = 20; // very small buildings - maximum zoom in
+      }
+
+      console.log(`Using zoom level ${zoomLevel} for building width ${buildingWidth}m`);
+
       const screenshot = await captureMapScreenshot(
         mapInstanceRef.current,
         selectedLocation.lat,
         selectedLocation.lng,
-        16 // zoom level for analysis
+        zoomLevel
       );
 
       updateProgress(1, 'completed', 'Screenshot captured successfully!', null, screenshot.imageBase64);
@@ -236,7 +255,7 @@ const BusinessAnalysisApp = () => {
       updateProgress(6, 'completed', 'Traffic analysis complete!');
       updateProgress(7, 'completed', 'Revenue projection complete!', {
         tppd: `${response.metrics.tppd} potnetial daily customers`,
-        monthlyRevenue: `${CURRENCIES[businessParams.currency]?.symbol || ''}${response.metrics.monthly_revenue.toLocaleString()}`
+        monthlyRevenue: `${CURRENCIES[businessParams.currency]?.symbol || ''}${response.metrics.monthlyRevenue.toLocaleString()}`
       });
       updateProgress(8, 'completed', 'Analysis complete! Results ready to display.');
 

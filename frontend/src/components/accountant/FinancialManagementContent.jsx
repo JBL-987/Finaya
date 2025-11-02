@@ -119,7 +119,7 @@ export default function FinancialManagementContent({
     return null;
   }
 
-  const GEMINI_API_KEY = "AIzaSyCH6esa0di5rgxVJHq8Os2YaBIMzFAOUgc";
+
 
   // File handling functions
   const handleFileUpload = async (file) => {

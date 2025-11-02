@@ -69,91 +69,48 @@ const Recommendations = ({ transactions }) => {
   };
 
   const recommendationsFromAI = async (transactions) => {
-    const GEMINI_API_KEY = "your-api-key"
-    const prompt = `
-        You are a financial analysis assistant. You will receive a JSON array called "transactions" where each transaction has:
-    - transactionType: "income" or "expense"
-    - amount: number
-    - date: ISO date string
-    - category: string (for expenses)
-    - taxDeductible: boolean
+    // Use OpenRouter Qwen API through backend instead of direct Gemini call
+    try {
+      const aiResponse = await accountingAPI.getFinancialRecommendations();
+      if (aiResponse.success && aiResponse.recommendations) {
+        // Transform backend response to expected format
+        const transformedRecommendations = [];
 
-    Your task is to:
-    1. Analyze monthly cash flow and identify any months where expenses exceed income.
-    2. Categorize and rank expense categories by total spend.
-    3. Calculate the percentage of expenses that are tax-deductible.
-    4. Detect any transactions that significantly deviate (e.g., >2×) from the average transaction amount.
-    5. Identify recurring patterns or seasonality in cash flow.
-    6. Suggest additional "Revenue Generation" opportunities.
-    7. Recommend "Expense Reduction" strategies.
-    8. Propose "Cash Flow Optimization" tactics (e.g., invoicing terms, reserves).
-    9. Point out "Tax Optimization" moves.
-    10. Highlight any "Risk Management" or "Debt Management" considerations.
+        // Handle different possible response formats from backend
+        if (Array.isArray(aiResponse.recommendations)) {
+          // If it's already an array of recommendations
+          return aiResponse.recommendations.map((rec, index) => ({
+            id: rec.id || index + 1,
+            title: rec.title || rec.name || `Recommendation ${index + 1}`,
+            description: rec.description || rec.details || rec.content || '',
+            impact: rec.impact || rec.priority || 'Medium',
+            category: rec.category || rec.type || 'General',
+            savings: rec.savings || rec.benefit || rec.expected_savings || 'Potential benefits'
+          }));
+        } else if (typeof aiResponse.recommendations === 'object') {
+          // If it's an object with categorized recommendations
+          Object.entries(aiResponse.recommendations).forEach(([category, recs], catIndex) => {
+            if (Array.isArray(recs)) {
+              recs.forEach((rec, index) => {
+                transformedRecommendations.push({
+                  id: catIndex * 100 + index + 1,
+                  title: rec.title || rec.name || `${category} Recommendation ${index + 1}`,
+                  description: rec.description || rec.details || rec.content || '',
+                  impact: rec.impact || rec.priority || 'Medium',
+                  category: category,
+                  savings: rec.savings || rec.benefit || rec.expected_savings || 'Potential benefits'
+                });
+              });
+            }
+          });
+          return transformedRecommendations;
+        }
 
-    Return only a JSON array of recommendation objects, each with these fields:
-    - id: unique integer  
-    - title: short title  
-    - description: detailed actionable recommendation  
-    - impact: one of ["High", "Medium", "Low"]  
-    - category: one of ["Revenue Generation","Expense Reduction","Cash Flow Optimization","Tax Optimization","Risk Management","Debt Management"]  
-    - savings: brief note on expected savings or benefits  
-    
-    Example output format:
-    json
-    [
-      {
-        "id": 1,
-        "title": "Negotiate Longer Payment Terms",
-        "description": "Extend supplier payment terms from 30 to 60 days to improve cash liquidity during low-revenue months.",
-        "impact": "High",
-        "category": "Cash Flow Optimization",
-        "savings": "Improved working capital"
-      },
-      ...
-    ]
-
-    EXTREMELY IMPORTANT: Your response must ONLY contain the raw JSON array. Do not include any explanations, markdown formatting, or code blocks. Just return the raw JSON array starting with [ and ending with ]. Nothing else.
-    `
-    // Call Gemini API
-    try{
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-           body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: prompt + "\n\nTransactions:\n" + JSON.stringify(transactions, null, 2) }],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 8192,
-            },
-          }),
-        });
-
-      const data = await response.json();
-      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!rawText) return [];
-      
-      const cleanedText = rawText.replace(/```json\s*|```/g, "").trim();
-
-      console.log("Gemini response:", cleanedText); 
-
-      try {
-        return JSON.parse(cleanedText);
-      } catch (err) {
-        console.error("Failed to parse Gemini response:", cleanedText);
         return [];
       }
-    } catch (error){
-      console.error(error);
+      return [];
+    } catch (error) {
+      console.error("Failed to get AI recommendations:", error);
       return [];
     }
   }
@@ -209,7 +166,7 @@ const Recommendations = ({ transactions }) => {
         {loading ? (
           <div className="flex flex-col justify-center items-center py-10 space-y-2">
             <Loader className="animate-spin text-white h-6 w-6" />
-            <div className="text-white text-sm">Analyzing with Gemini AI...</div>
+            <div className="text-white text-sm">Analyzing with Qwen AI...</div>
           </div>
         ) : (
         <div className="space-y-4">
@@ -285,7 +242,7 @@ const Recommendations = ({ transactions }) => {
           {loading ? (
             <div className="flex flex-col justify-center items-center py-10 space-y-2">
               <Loader className="animate-spin text-white h-6 w-6" />
-              <div className="text-white text-sm">Analyzing with Gemini AI...</div>
+              <div className="text-white text-sm">Analyzing with Qwen AI...</div>
             </div>
           ) : (
           <ol className="mt-4 space-y-2 pl-5 list-decimal text-gray-300">

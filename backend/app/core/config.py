@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     # OpenRouter API
     OPENROUTER_API_KEY: str
-    OPENROUTER_MODEL: str = "qwen/qwen2.5-vl-32b-instruct:free"
+    OPENROUTER_MODEL: str = "openai/gpt-4o-mini"
 
     # Security
     SECRET_KEY: str
