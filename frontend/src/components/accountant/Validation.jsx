@@ -13,6 +13,7 @@ import {
 import Swal from "sweetalert2";
 import DocumentComparison from "./DocumentComparison";
 import SimpleValidationAnimation from "./SimpleValidationAnimation";
+import { Skeleton } from "../ui/Skeleton";
 import {
   getDocumentPosition,
   hasDocumentPosition,
@@ -59,6 +60,15 @@ const Validation = ({
   const [flaggedTransactions, setFlaggedTransactions] = useState({});
   const [isValidating, setIsValidating] = useState(false);
   const [currentValidationItem, setCurrentValidationItem] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Set loading to false after initial render
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Function to check processed files
   const checkProcessedFiles = () => {
@@ -261,6 +271,7 @@ const Validation = ({
 
   // Effect to validate transactions when component mounts or when transactions/processed files change
   useEffect(() => {
+    console.log('Validation useEffect triggered, transactions:', transactions?.length || 0);
     checkProcessedFiles();
 
     if (transactions && transactions.length > 0) {
@@ -285,6 +296,10 @@ const Validation = ({
         totalErrors: errors,
         totalWarnings: warnings,
       });
+    } else {
+      // Reset validation results when no transactions
+      setValidationResults([]);
+      setComplianceStatus(null);
     }
   }, [transactions, processedFiles]);
 
@@ -472,6 +487,98 @@ const Validation = ({
       showTransactionValidation(transactionsToValidate, index + 1, stats);
     }, 1500);
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between mb-4">
+          <Skeleton className="h-8 w-48 bg-gray-700" />
+          <div className="flex items-center space-x-4">
+            <Skeleton className="h-8 w-32 bg-gray-700" />
+            <Skeleton className="h-8 w-32 bg-gray-700" />
+          </div>
+        </div>
+
+        {/* Filter and Search Skeleton */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <Skeleton className="h-10 flex-1 bg-gray-700" />
+          <Skeleton className="h-10 w-32 bg-gray-700" />
+        </div>
+
+        {/* Statistics Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="bg-gray-900 border border-gray-700 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Skeleton className="h-4 w-24 bg-gray-700" />
+                <Skeleton className="h-5 w-5 bg-gray-700" />
+              </div>
+              <Skeleton className="h-8 w-12 bg-gray-700" />
+              <Skeleton className="h-3 w-32 mt-2 bg-gray-700" />
+            </div>
+          ))}
+        </div>
+
+        {/* Validation Results Skeleton */}
+        <div className="rounded-xl bg-gray-900 border border-gray-700 p-6">
+          <Skeleton className="h-6 w-40 mb-6 bg-gray-700" />
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} className="py-4 border-b border-gray-700 last:border-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <Skeleton className="h-10 w-10 rounded-full bg-gray-700" />
+                    <div>
+                      <Skeleton className="h-4 w-48 mb-1 bg-gray-700" />
+                      <Skeleton className="h-3 w-24 bg-gray-700" />
+                      <div className="flex items-center mt-1 space-x-2">
+                        <Skeleton className="h-5 w-16 bg-gray-700" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Skeleton className="h-6 w-20 bg-gray-700" />
+                    <div className="flex space-x-1">
+                      <Skeleton className="h-8 w-8 bg-gray-700" />
+                      <Skeleton className="h-8 w-8 bg-gray-700" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Compliance Status Skeleton */}
+        <div className="rounded-xl bg-gray-900 border border-gray-700 p-6">
+          <Skeleton className="h-6 w-32 mb-6 bg-gray-700" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              <Skeleton className="h-5 w-24 bg-gray-700" />
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="flex justify-between">
+                    <Skeleton className="h-4 w-32 bg-gray-700" />
+                    <Skeleton className="h-4 w-6 bg-gray-700" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Skeleton className="h-5 w-24 bg-gray-700" />
+              <div className="p-4 rounded-lg bg-gray-800">
+                <div className="flex items-center space-x-2">
+                  <Skeleton className="h-5 w-5 bg-gray-700" />
+                  <Skeleton className="h-4 w-32 bg-gray-700" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -663,16 +770,38 @@ const Validation = ({
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      item.status === "valid"
-                        ? "bg-green-900/30 text-green-400"
-                        : item.status === "warning"
-                        ? "bg-yellow-900/30 text-yellow-400"
-                        : "bg-red-900/30 text-red-400"
-                    }`}
-                  >
-                    {item.message}
+                  <div className="flex flex-col space-y-1">
+                    <div
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        item.status === "valid"
+                          ? "bg-green-900/30 text-green-400 border border-green-500/30"
+                          : item.status === "warning"
+                          ? "bg-yellow-900/30 text-yellow-400 border border-yellow-500/30"
+                          : "bg-red-900/30 text-red-400 border border-red-500/30"
+                      }`}
+                    >
+                      {item.status === "valid" ? (
+                        <div className="flex items-center space-x-1">
+                          <CheckCircle className="h-3 w-3" />
+                          <span>✅ VALIDATED</span>
+                        </div>
+                      ) : item.status === "warning" ? (
+                        <div className="flex items-center space-x-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          <span>⚠️ NEEDS ATTENTION</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          <span>❌ REQUIRES ACTION</span>
+                        </div>
+                      )}
+                    </div>
+                    {item.status === "valid" && (
+                      <div className="text-xs text-green-400 font-medium animate-pulse">
+                        🎉 Transaction verified successfully!
+                      </div>
+                    )}
                   </div>
                   <div className="flex space-x-1">
                     <button

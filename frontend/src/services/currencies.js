@@ -153,7 +153,8 @@ export const formatCurrency = (amount, currencyCode, locale = 'en-US') => {
   const safeAmount = (amount == null || isNaN(amount)) ? 0 : amount;
 
   try {
-    return new Intl.NumberFormat(locale, {
+    const effectiveLocale = (currencyCode === 'IDR' && locale === 'en-US') ? 'id-ID' : locale;
+    return new Intl.NumberFormat(effectiveLocale, {
       style: 'currency',
       currency: currencyCode,
       minimumFractionDigits: 0,

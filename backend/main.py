@@ -14,6 +14,7 @@ from app.api.v1.analysis import router as analysis_router
 from app.api.v1.accounting import router as accounting_router
 from app.api.v1.advisor import router as advisor_router
 from app.api.v1.document import router as document_router
+from app.api.v1.reports import router as reports_router
 from app.core.middleware import RequestLoggingMiddleware
 from slowapi.errors import RateLimitExceeded
 
@@ -104,6 +105,7 @@ app.include_router(analysis_router, prefix="/api/v1/analysis", tags=["Analysis"]
 app.include_router(accounting_router, prefix="/api/v1/accounting", tags=["Accounting"])
 app.include_router(advisor_router, prefix="/api/v1/advisor", tags=["Advisor"])
 app.include_router(document_router, prefix="/api/v1/document", tags=["Document"])
+app.include_router(reports_router, prefix="/api/v1/reports", tags=["Reports"])
 
 # Root endpoint
 @app.get("/")

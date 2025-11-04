@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Link } from "react-router-dom";
+import CurrencySelector from "./CurrencySelector";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 const Navbar_Component = ({ isAuthenticated, logout }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { selectedCurrency, changeCurrency } = useCurrency();
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -60,6 +63,11 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
             </>
           ) : (
             <>
+              {/* CurrencySelector takes the first position (swap with Analysis) */}
+              <CurrencySelector
+                selectedCurrency={selectedCurrency}
+                onCurrencyChange={changeCurrency}
+                />
               <Link
                 to="/app"
                 className="text-white hover:text-yellow-400 transition-colors font-semibold text-sm lg:text-base py-2"
@@ -72,22 +80,20 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
               >
                 Financial Management
               </Link>
+              {/* Analysis moved near the right side */}
               <Link
                 to="/dashboard"
                 className="text-white hover:text-yellow-400 transition-colors font-semibold text-sm lg:text-base py-2"
               >
                 Dashboard
-              </Link>
+              </Link>  
+              <button
+                onClick={logout}
+                className="rounded-full bg-yellow-600 text-white border border-transparent transition-all duration-300 ease-out transform hover:scale-105 hover:bg-white hover:text-yellow-600 hover:border-yellow-600 flex items-center justify-center gap-2 px-6 py-3 font-medium shadow-lg hover:shadow-xl text-sm"
+              >
+                Logout
+              </button>
             </>
-          )}
-
-          {isAuthenticated && (
-            <button
-              onClick={logout}
-              className="rounded-full bg-yellow-600 text-white border border-transparent transition-all duration-300 ease-out transform hover:scale-105 hover:bg-white hover:text-yellow-600 hover:border-yellow-600 flex items-center justify-center gap-2 px-6 py-3 font-medium shadow-lg hover:shadow-xl text-sm"
-            >
-              Logout
-            </button>
           )}
         </div>
 
@@ -128,32 +134,41 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
                 </>
               ) : (
                 <>
-                <Link
-                  to="/app"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-white hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-semibold"
-                >
-                  Analysis
-                </Link>
-                <Link
-                  to="/financial-management"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-white hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-semibold"
-                >
-                  Financial Management
-                </Link>
-                <Link
-                  to="/dashboard"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="text-white hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-semibold"
-                >
-                  Dashboard
-                </Link>
+                  <div className="w-full">
+                    <CurrencySelector
+                      selectedCurrency={selectedCurrency}
+                      onCurrencyChange={(code) => {
+                        changeCurrency(code);
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+                  <Link
+                    to="/app"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-white hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-semibold"
+                  >
+                    Analysis
+                  </Link>
+                  <Link
+                    to="/financial-management"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-white hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-semibold"
+                  >
+                    Financial Management
+                  </Link>
+                  <Link
+                    to="/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-white hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-semibold"
+                  >
+                    Dashboard
+                  </Link>
                 </>
               )}
 
-              <div className="border-t border-gray-700 pt-4 mt-2">
-                {isAuthenticated && (
+              {isAuthenticated && (
+                <div className="border-t border-gray-700 pt-4 mt-2 space-y-3">
                   <button
                     onClick={() => {
                       logout();
@@ -163,8 +178,8 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
                   >
                     Logout
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         )}

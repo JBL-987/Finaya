@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Receipt,
   Download,
@@ -12,6 +12,8 @@ import {
   Trash,
 } from "lucide-react";
 import { Skeleton } from "../ui/Skeleton";
+import { formatCurrency } from "../../services/currencies";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 const LogTrails = ({
   transactions,
@@ -20,10 +22,26 @@ const LogTrails = ({
   onExportTransactions,
   onDeleteAllTransactions,
 }) => {
+  const { selectedCurrency } = useCurrency();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("timestamp");
   const [sortDirection, setSortDirection] = useState("desc");
   const [filterType, setFilterType] = useState("all");
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Set loading to false after initial render
+  useEffect(() => {
+    console.log('LogTrails component mounted, transactions:', transactions?.length || 0);
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Log when transactions change
+  useEffect(() => {
+    console.log('LogTrails transactions updated:', transactions?.length || 0);
+  }, [transactions]);
 
   // Filter transactions based on search term and filter type
   const filteredTransactions = transactions.filter((transaction) => {
@@ -85,14 +103,89 @@ const LogTrails = ({
   };
 
   // Format amount for display
-  const formatAmount = (amount, type) => {
-    if (amount === undefined || amount === null) return "N/A";
-    const formattedAmount = parseFloat(amount).toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-    });
-    return formattedAmount;
+  const formatAmount = (transaction) => {
+    if (!transaction || transaction.amount === undefined || transaction.amount === null) return "N/A";
+    return formatCurrency(transaction.amount, transaction.currency || selectedCurrency);
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between mb-4">
+          <Skeleton className="h-8 w-48 bg-gray-700" />
+          <Skeleton className="h-4 w-32 bg-gray-700" />
+        </div>
+
+        {/* Search and Filter Bar Skeleton */}
+        <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 flex flex-col md:flex-row gap-4">
+          <Skeleton className="h-10 flex-1 bg-gray-700" />
+          <Skeleton className="h-10 w-32 bg-gray-700" />
+          <div className="flex space-x-2">
+            <Skeleton className="h-10 w-20 bg-gray-700" />
+            <Skeleton className="h-10 w-24 bg-gray-700" />
+          </div>
+        </div>
+
+        {/* Table Skeleton */}
+        <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-gray-800 text-gray-400 text-xs uppercase">
+                <tr>
+                  <th className="px-4 py-3">
+                    <Skeleton className="h-4 w-16 bg-gray-700" />
+                  </th>
+                  <th className="px-4 py-3">
+                    <Skeleton className="h-4 w-24 bg-gray-700" />
+                  </th>
+                  <th className="px-4 py-3">
+                    <Skeleton className="h-4 w-20 bg-gray-700" />
+                  </th>
+                  <th className="px-4 py-3">
+                    <Skeleton className="h-4 w-16 bg-gray-700" />
+                  </th>
+                  <th className="px-4 py-3">
+                    <Skeleton className="h-4 w-16 bg-gray-700" />
+                  </th>
+                  <th className="px-4 py-3 text-right">
+                    <Skeleton className="h-4 w-16 bg-gray-700" />
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-800">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <tr key={index} className="hover:bg-gray-800/50 transition-colors">
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-20 bg-gray-700" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-32 bg-gray-700" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-6 w-20 bg-gray-700 rounded-full" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-16 bg-gray-700" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-24 bg-gray-700" />
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end space-x-2">
+                        <Skeleton className="h-6 w-6 bg-gray-700" />
+                        <Skeleton className="h-6 w-6 bg-gray-700" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -285,7 +378,7 @@ const LogTrails = ({
                       }`}
                     >
                       {transaction.transactionType === "expense" ? "-" : "+"}
-                      {formatAmount(transaction.amount)}
+                      {formatAmount(transaction)}
                     </td>
                     <td className="px-4 py-3 text-gray-400 flex items-center">
                       <FileText className="h-4 w-4 mr-2 text-blue-400" />

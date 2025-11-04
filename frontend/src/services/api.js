@@ -74,6 +74,26 @@ export const authAPI = {
       return null;
     }
   },
+
+  getCurrencyPreferences: async () => {
+    try {
+      const response = await api.get('/auth/currency-preferences');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get currency preferences:', error);
+      return { success: false, preferences: {} };
+    }
+  },
+
+  updateCurrencyPreferences: async (preferences) => {
+    try {
+      const response = await api.put('/auth/currency-preferences', preferences);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update currency preferences:', error);
+      return { success: false };
+    }
+  },
 };
 
 // ============= Analysis API =============
@@ -251,6 +271,51 @@ export const advisorAPI = {
   // Tax Strategy
   getTaxStrategy: async (requestData) => {
     const response = await api.post('/advisor/tax/strategy', requestData);
+    return response.data;
+  },
+
+  // Monte Carlo Simulation
+  runMonteCarlo: async (requestData) => {
+    const response = await api.post('/advisor/monte-carlo', requestData);
+    return response.data;
+  },
+};
+
+// ============= Reports API =============
+export const reportsAPI = {
+  // Document categorization
+  categorizeDocument: async (documentData) => {
+    const response = await api.post('/reports/categorize-document', documentData);
+    return response.data;
+  },
+
+  // Get user reports
+  getUserReports: async () => {
+    const response = await api.get('/reports/user-reports');
+    return response.data;
+  },
+
+  // Generate financial report
+  generateFinancialReport: async (reportData) => {
+    const response = await api.post('/reports/generate-financial-report', reportData);
+    return response.data;
+  },
+
+  // Generate tax report
+  generateTaxReport: async (reportData) => {
+    const response = await api.post('/reports/generate-tax-report', reportData);
+    return response.data;
+  },
+
+  // Create financial report
+  createFinancialReport: async (reportData) => {
+    const response = await api.post('/reports/create-financial-report', reportData);
+    return response.data;
+  },
+
+  // Create tax report
+  createTaxReport: async (reportData) => {
+    const response = await api.post('/reports/create-tax-report', reportData);
     return response.data;
   },
 };

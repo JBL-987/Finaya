@@ -14,6 +14,10 @@ class User(UserBase):
     id: int
     is_active: bool
     created_at: datetime
+    currency_preferences: Optional[Dict[str, float]] = None
 
     class Config:
         from_attributes = True
+
+class UserPreferences(BaseModel):
+    currency_preferences: Dict[str, float]

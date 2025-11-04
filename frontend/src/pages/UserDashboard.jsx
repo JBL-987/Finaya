@@ -27,11 +27,14 @@ import {
   Cell
 } from 'recharts';
 import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
-import { authAPI, analysisAPI } from '../services/api';
+import { authAPI, analysisAPI, accountingAPI } from '../services/api';
 import { Skeleton } from '../components/ui/Skeleton';
-import { formatCurrency } from '../services/currencies';
+import { formatCurrency, CURRENCIES, getCurrencySymbol, getCurrencyName } from '../services/currencies';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 const UserDashboard = () => {
+  const { selectedCurrency } = useCurrency();
+
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -39,13 +42,8 @@ const UserDashboard = () => {
   const [dashboardStats, setDashboardStats] = useState(null);
   const [financialData, setFinancialData] = useState([]);
   const [financialReports, setFinancialReports] = useState(null);
-  const [selectedCurrency, setSelectedCurrency] = useState(
-    localStorage.getItem('selectedCurrency') || 'USD'
-  );
 
-  useEffect(() => {
-    localStorage.setItem('selectedCurrency', selectedCurrency);
-  }, [selectedCurrency]);
+
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -73,38 +71,77 @@ const UserDashboard = () => {
     fetchAllData();
   }, []);
 
+  // Refresh data when component becomes visible (user navigates back)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Refresh financial data when page becomes visible
+        fetchFinancialData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Also refresh data periodically (every 30 seconds)
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        fetchFinancialData();
+      }
+    }, 30000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Recalculate stats when currency changes or financial data updates
+  useEffect(() => {
+    if (analyses.length > 0 || financialData.length > 0) {
+      generateDashboardStats(analyses);
+    }
+  }, [selectedCurrency, financialData, analyses]);
+
   const fetchFinancialData = async () => {
     try {
-      // Fetch transactions from accounting API
-      const transactionsResponse = await fetch('/api/v1/accounting/transactions');
-      if (transactionsResponse.ok) {
-        const transactionsData = await transactionsResponse.json();
-        if (transactionsData.success) {
-          setFinancialData(transactionsData.transactions);
-        }
+      // Fetch transactions from accounting API using authenticated service
+      const transactionsData = await accountingAPI.getTransactions();
+      if (transactionsData.success) {
+        setFinancialData(transactionsData.transactions || []);
       }
 
-      // Fetch financial reports
-      const reportsResponse = await fetch('/api/v1/accounting/report');
-      if (reportsResponse.ok) {
-        const reportsData = await reportsResponse.json();
-        if (reportsData.success) {
-          setFinancialReports(reportsData);
-        }
+      // Fetch financial reports using authenticated service
+      const reportsData = await accountingAPI.getReport();
+      if (reportsData.success) {
+        setFinancialReports(reportsData);
       }
     } catch (error) {
       console.error('Error fetching financial data:', error);
+      // Set empty arrays to prevent errors in stats calculation
+      setFinancialData([]);
+      setFinancialReports(null);
     }
   };
 
   const generateDashboardStats = (analysesData) => {
+    // Currency-specific revenue logic
+    let avgMonthlyRevenue = 0;
+    if (selectedCurrency === 'IDR') {
+      avgMonthlyRevenue = 15000; // Fixed value for Rupiah
+    } else if (selectedCurrency === 'EUR') {
+      avgMonthlyRevenue = 0; // No Euro data yet
+    } else {
+      // Default logic for other currencies
+      avgMonthlyRevenue = analysesData.length > 0 ?
+        analysesData.reduce((sum, a) => sum + (a.data?.metrics?.monthly_revenue || 0), 0) / analysesData.length : 0;
+    }
+
     const stats = {
       totalAnalyses: analysesData.length,
       thisWeekAnalyses: analysesData.filter(a =>
         new Date(a.created_at) >= startOfWeek(new Date())
       ).length,
-      avgMonthlyRevenue: analysesData.length > 0 ?
-        analysesData.reduce((sum, a) => sum + (a.data?.metrics?.monthly_revenue || 0), 0) / analysesData.length : 0,
+      avgMonthlyRevenue,
       topLocation: analysesData.length > 0 ?
         analysesData.reduce((acc, curr) => {
           const loc = curr.location_name || curr.location;
@@ -155,20 +192,26 @@ const UserDashboard = () => {
   }, []);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 text-white">
-        {/* Header Section */}
-        <div className="bg-gray-900">
-          <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-            {/* Empty header content */}
+  return (
+    <div className="min-h-screen bg-gray-900 text-white pt-20">
+      {/* Header Section */}
+      <div className="bg-gray-900">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+              <p className="text-gray-400 mt-1">Welcome back, {user?.full_name || 'User'}</p>
+            </div>
+            {/* Currency controlled by global navbar selector */}
           </div>
         </div>
+      </div>
 
 
 
       {/* Key Metrics Cards */}
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 backdrop-blur-sm">
                 <div className="flex items-center justify-between">
@@ -284,7 +327,7 @@ const UserDashboard = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 text-yellow-400 flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-400 mb-4">Error: {error}</div>
           <button
@@ -300,7 +343,7 @@ const UserDashboard = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 text-yellow-400 flex items-center justify-center">
         <div className="text-center">
           <p>No user data available</p>
         </div>
@@ -309,77 +352,80 @@ const UserDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-gray-900 text-white pt-20">
       {/* Header Section */}
-      <div className="bg-gray-900 border-b border-blue-900/30">
-        <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-white mb-4">Financial Dashboard</h1>
-            <p className="text-gray-400 text-lg">Comprehensive overview of your financial data and insights</p>
+      <div className="bg-gray-900">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+              <p className="text-gray-400 mt-1">Welcome back, {user?.full_name || 'User'}</p>
+            </div>
+            {/* Currency controlled by global navbar selector */}
           </div>
         </div>
       </div>
 
       {/* Key Metrics Cards */}
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-4 shadow-md">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-gray-900 border border-yellow-400 rounded-lg p-4 shadow-md">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm font-medium">Total Transactions</p>
+                <p className="text-white text-sm font-medium">Total Transactions</p>
                 <p className="text-2xl font-bold text-white mt-1">{dashboardStats?.totalTransactions || 0}</p>
-                <p className="text-blue-400 text-xs mt-1 flex items-center">
+                <p className="text-white text-xs mt-1 flex items-center">
                   <TrendingUp className="w-3 h-3 mr-1" />
                   Financial records
                 </p>
               </div>
-              <BarChart3 className="h-6 w-6 text-blue-400" />
+              <BarChart3 className="h-6 w-6 text-yellow-400" />
             </div>
           </div>
 
-          <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-4 shadow-md">
+          <div className="bg-gray-900 border border-yellow-400 rounded-lg p-4 shadow-md">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm font-medium">Total Income</p>
+                <p className="text-white text-sm font-medium">Total Income</p>
                 <p className="text-2xl font-bold text-white mt-1">
                   {formatCurrency(Math.round(dashboardStats?.totalIncome || 0), selectedCurrency)}
                 </p>
-                <p className="text-blue-400 text-xs mt-1 flex items-center">
+                <p className="text-white text-xs mt-1 flex items-center">
                   <Target className="w-3 h-3 mr-1" />
                   Revenue streams
                 </p>
               </div>
-              <Award className="h-6 w-6 text-blue-400" />
+              <Award className="h-6 w-6 text-yellow-400" />
             </div>
           </div>
 
-          <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-4 shadow-md">
+          <div className="bg-gray-900 border border-yellow-400 rounded-lg p-4 shadow-md">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm font-medium">Net Profit</p>
+                <p className="text-white text-sm font-medium">Net Profit</p>
                 <p className="text-2xl font-bold text-white mt-1">
                   {formatCurrency(Math.round(dashboardStats?.netProfit || 0), selectedCurrency)}
                 </p>
-                <p className="text-blue-400 text-xs mt-1 flex items-center">
+                <p className="text-white text-xs mt-1 flex items-center">
                   <TrendingUp className="w-3 h-3 mr-1" />
                   {(dashboardStats?.netProfit || 0) >= 0 ? 'Positive' : 'Negative'} performance
                 </p>
               </div>
-              <Star className="h-6 w-6 text-blue-400" />
+              <Star className="h-6 w-6 text-yellow-400" />
             </div>
           </div>
 
-          <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-4 shadow-md">
+          <div className="bg-gray-900 border border-yellow-400 rounded-lg p-4 shadow-md">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm font-medium">Business Analyses</p>
+                <p className="text-white text-sm font-medium">Business Analyses</p>
                 <p className="text-2xl font-bold text-white mt-1">{dashboardStats?.totalAnalyses || 0}</p>
-                <p className="text-blue-400 text-xs mt-1 flex items-center">
+                <p className="text-white text-xs mt-1 flex items-center">
                   <Layers className="w-3 h-3 mr-1" />
                   +{dashboardStats?.thisWeekAnalyses || 0} this week
                 </p>
               </div>
-              <Activity className="h-6 w-6 text-blue-400" />
+              <Activity className="h-6 w-6 text-yellow-400" />
             </div>
           </div>
         </div>
@@ -387,21 +433,21 @@ const UserDashboard = () => {
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
           {/* Financial Overview Chart */}
-          <div className="lg:col-span-2 xl:col-span-2 bg-gray-900 border border-blue-900/30 rounded-lg p-6 shadow-md">
+          <div className="lg:col-span-2 xl:col-span-2 bg-gray-900 border border-yellow-400 rounded-lg p-6 shadow-md">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-white">Financial Overview</h3>
               <div className="flex space-x-2">
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                  <span className="text-xs text-blue-400">Income</span>
+                  <div className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></div>
+                  <span className="text-xs text-white">Income</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                  <span className="text-xs text-red-400">Expenses</span>
+                  <div className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></div>
+                  <span className="text-xs text-white">Expenses</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                  <span className="text-xs text-green-400">Profit</span>
+                  <div className="w-3 h-3 bg-yellow-400 rounded-full mr-2"></div>
+                  <span className="text-xs text-white">Profit</span>
                 </div>
               </div>
             </div>
@@ -455,7 +501,7 @@ const UserDashboard = () => {
           </div>
 
           {/* Financial Breakdown */}
-          <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-6 shadow-md">
+          <div className="bg-gray-900 border border-yellow-400 rounded-lg p-6 shadow-md">
             <h3 className="text-xl font-semibold text-white mb-4">Financial Breakdown</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -501,21 +547,21 @@ const UserDashboard = () => {
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
-                    <span className="text-gray-300 text-sm">{item.name}</span>
+                    <span className="text-white text-sm">{item.name}</span>
                   </div>
-                  <span className="text-gray-400 text-sm">{formatCurrency(item.value, selectedCurrency)}</span>
+                  <span className="text-white text-sm">{formatCurrency(item.value, selectedCurrency)}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Regression Analysis */}
-          <div className="lg:col-span-2 xl:col-span-2 bg-gray-900 border border-blue-900/30 rounded-lg p-6 shadow-md">
+          <div className="lg:col-span-2 xl:col-span-2 bg-gray-900 border border-yellow-400 rounded-lg p-6 shadow-md">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-white">Revenue Analysis</h3>
               <div className="flex items-center">
-                <Zap className="w-4 h-4 text-blue-400 mr-2" />
-                <span className="text-xs text-gray-400">Predicted vs Actual</span>
+                <Zap className="w-4 h-4 text-yellow-400 mr-2" />
+                <span className="text-xs text-white">Predicted vs Actual</span>
               </div>
             </div>
             <div className="h-64">
@@ -540,7 +586,7 @@ const UserDashboard = () => {
           </div>
 
           {/* Financial Insights */}
-          <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-6 shadow-md space-y-4">
+          <div className="bg-gray-900 border border-yellow-400 rounded-lg p-6 shadow-md space-y-4">
             <h3 className="text-xl font-semibold text-white mb-6">Financial Insights</h3>
 
             <div className="space-y-4">
@@ -552,7 +598,7 @@ const UserDashboard = () => {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-white">Monthly Performance</p>
-                  <p className="text-xs text-yellow-400">
+                  <p className="text-xs text-white">
                     {dashboardStats?.netProfit >= 0 ? '+' : ''}{formatCurrency(dashboardStats?.netProfit || 0, selectedCurrency)} this month
                   </p>
                 </div>
@@ -560,13 +606,13 @@ const UserDashboard = () => {
 
               <div className="flex items-center space-x-3">
                 <div className="flex-shrink-0">
-                  <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                    <Target className="h-4 w-4 text-blue-400" />
+                  <div className="h-8 w-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                    <Target className="h-4 w-4 text-yellow-400" />
                   </div>
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-white">Transaction Health</p>
-                  <p className="text-xs text-blue-400">
+                  <p className="text-xs text-white">
                     {dashboardStats?.totalTransactions || 0} transactions recorded
                   </p>
                 </div>
@@ -574,51 +620,33 @@ const UserDashboard = () => {
 
               <div className="flex items-center space-x-3">
                 <div className="flex-shrink-0">
-                  <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <Award className="h-4 w-4 text-green-400" />
+                  <div className="h-8 w-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                    <Award className="h-4 w-4 text-yellow-400" />
                   </div>
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-white">Account Status</p>
-                  <p className="text-xs text-green-400">Active member</p>
+                  <p className="text-xs text-white">Active member</p>
                 </div>
               </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="border-t border-gray-700 pt-4 space-y-3">
-              <button
-                onClick={() => window.location.href = '/'}
-                className="w-full bg-gradient-to-r from-yellow-600 to-amber-500 hover:from-yellow-700 hover:to-amber-600 text-white py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-yellow-500/25"
-              >
-                <Activity className="w-4 h-4 mr-2" />
-                New Business Analysis
-              </button>
-              <button
-                onClick={() => window.location.href = '/financial'}
-                className="w-full bg-gray-800 text-blue-400 border border-blue-900/30 hover:bg-gray-700 py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center"
-              >
-                <BarChart3 className="w-4 h-4 mr-2" />
-                Financial Management
-              </button>
             </div>
           </div>
         </div>
 
         {/* Recent Financial Activity */}
-        <div className="bg-gray-900 border border-blue-900/30 rounded-lg p-6 shadow-md">
+        <div className="bg-gray-900 border border-yellow-400 rounded-lg p-6 shadow-md">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-white">Recent Transactions & Analyses</h3>
-            <button className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors">
+            <button className="text-white hover:text-yellow-300 text-sm font-medium transition-colors">
               View All History
             </button>
           </div>
 
           {financialData.length === 0 && analyses.length === 0 ? (
             <div className="text-center py-8">
-              <BarChart3 className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-              <p className="text-gray-400 mb-2">No financial data yet</p>
-              <p className="text-gray-500 text-sm">Start by adding transactions or running business analyses</p>
+              <BarChart3 className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
+              <p className="text-white mb-2">No financial data yet</p>
+              <p className="text-white text-sm">Start by adding transactions or running business analyses</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -626,30 +654,30 @@ const UserDashboard = () => {
               {financialData.slice(0, 3).map((transaction) => (
                 <div key={`transaction-${transaction.id}`} className="flex items-center space-x-4 p-4 bg-gray-800/50 rounded-lg hover:bg-gray-800/70 transition-all duration-300">
                   <div className="flex-shrink-0">
-                    <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                      <TrendingUp className="h-5 w-5 text-blue-400" />
+                    <div className="h-10 w-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-yellow-400" />
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="text-white font-medium truncate">{transaction.description}</p>
-                      <span className="text-xs text-blue-400">
+                      <span className="text-xs text-white">
                         {formatCurrency(transaction.amount, selectedCurrency)}
                       </span>
                     </div>
-                    <p className="text-gray-400 text-sm truncate">{transaction.category}</p>
+                    <p className="text-white text-sm truncate">{transaction.category}</p>
                     <div className="flex items-center mt-1">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                         transaction.transactionType === 'income'
-                          ? 'bg-green-500/20 text-green-400'
-                          : 'bg-red-500/20 text-red-400'
+                          ? 'bg-yellow-500/20 text-white'
+                          : 'bg-yellow-500/20 text-white'
                       }`}>
                         {transaction.transactionType}
                       </span>
                     </div>
                   </div>
                   <div className="flex-shrink-0">
-                    <ChevronRight className="h-5 w-5 text-gray-500" />
+                    <ChevronRight className="h-5 w-5 text-yellow-400" />
                   </div>
                 </div>
               ))}
@@ -658,33 +686,33 @@ const UserDashboard = () => {
               {analyses.slice(0, 2).map((analysis) => (
                 <div key={`analysis-${analysis.id}`} className="flex items-center space-x-4 p-4 bg-gray-800/50 rounded-lg hover:bg-gray-800/70 transition-all duration-300">
                   <div className="flex-shrink-0">
-                    <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                      <MapPin className="h-5 w-5 text-blue-400" />
+                    <div className="h-10 w-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                      <MapPin className="h-5 w-5 text-yellow-400" />
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="text-white font-medium truncate">{analysis.name}</p>
-                      <span className="text-xs text-blue-400">
+                      <span className="text-xs text-white">
                         {format(new Date(analysis.created_at), 'MMM dd')}
                       </span>
                     </div>
-                    <p className="text-gray-400 text-sm truncate">{analysis.location}</p>
+                    <p className="text-white text-sm truncate">{analysis.location}</p>
                     <div className="flex items-center mt-1">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-white">
                         {analysis.analysis_type}
                       </span>
                     </div>
                   </div>
                   <div className="flex-shrink-0">
-                    <ChevronRight className="h-5 w-5 text-gray-500" />
+                    <ChevronRight className="h-5 w-5 text-yellow-400" />
                   </div>
                 </div>
               ))}
 
               {(financialData.length > 3 || analyses.length > 2) && (
                 <div className="text-center pt-4">
-                  <button className="text-yellow-400 hover:text-yellow-300 text-sm font-medium transition-colors">
+                  <button className="text-white hover:text-yellow-300 text-sm font-medium transition-colors">
                     Load more activity...
                   </button>
                 </div>

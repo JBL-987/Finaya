@@ -3,8 +3,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 import { BarChart3, TrendingUp, ArrowUpRight, ArrowDownRight, AlertCircle, Brain, Zap } from 'lucide-react';
 import { accountingAPI } from '../../services/api';
 import { Skeleton } from '../ui/Skeleton';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const Analysis = ({ transactions }) => {
+  const { formatCurrency, selectedCurrency } = useCurrency();
+
   // State untuk menyimpan hasil analisis AI
   const [aiInsights, setAiInsights] = useState(null);
   const [financialRatios, setFinancialRatios] = useState([
@@ -55,6 +58,7 @@ const Analysis = ({ transactions }) => {
 
   // Effect untuk menganalisis transaksi dengan AI ketika data berubah
   useEffect(() => {
+    console.log('Analysis useEffect triggered, transactions:', transactions?.length || 0);
     if (transactions && transactions.length > 0) {
       performAIAnalysis();
     } else {
@@ -165,13 +169,31 @@ const Analysis = ({ transactions }) => {
       throw new Error('Invalid transactions data');
     }
 
+    // Helper function to determine if transaction is income
+    const isIncomeTransaction = (transaction) => {
+      // Check transaction type first
+      if (transaction.transactionType === 'income') return true;
+      if (transaction.transactionType === 'expense') return false;
+
+      // Check category for income indicators
+      const category = (transaction.category || '').toLowerCase();
+      const description = (transaction.description || '').toLowerCase();
+
+      // Income categories and keywords
+      const incomeKeywords = ['dividend', 'stock', 'investment', 'interest', 'revenue', 'income', 'salary', 'wage'];
+      const incomeCategories = ['dividend', 'investment', 'interest', 'revenue', 'income'];
+
+      return incomeKeywords.some(keyword => description.includes(keyword)) ||
+             incomeCategories.some(cat => category.includes(cat));
+    };
+
     // Hitung total pendapatan dan pengeluaran
     const totalIncome = transactions
-      .filter(t => t.transactionType === 'income')
+      .filter(t => isIncomeTransaction(t))
       .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
     const totalExpenses = transactions
-      .filter(t => t.transactionType === 'expense')
+      .filter(t => !isIncomeTransaction(t))
       .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
     // Hitung rasio keuangan
@@ -227,11 +249,11 @@ const Analysis = ({ transactions }) => {
     );
 
     const lastMonthIncome = lastMonthTransactions
-      .filter(t => t.transactionType === 'income')
+      .filter(t => isIncomeTransaction(t))
       .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
     const lastMonthExpenses = lastMonthTransactions
-      .filter(t => t.transactionType === 'expense')
+      .filter(t => !isIncomeTransaction(t))
       .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
 
     const lastMonthProfitMargin = lastMonthIncome > 0 ? 
@@ -292,7 +314,7 @@ const Analysis = ({ transactions }) => {
       if (!acc[month]) {
         acc[month] = { income: 0, expenses: 0 };
       }
-      if (t.transactionType === 'income') {
+      if (isIncomeTransaction(t)) {
         acc[month].income += parseFloat(t.amount || 0);
       } else {
         acc[month].expenses += parseFloat(t.amount || 0);
@@ -344,14 +366,7 @@ const Analysis = ({ transactions }) => {
     setAnomalies(detectedAnomalies);
   };
 
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0
-    }).format(amount || 0);
-  };
+
 
   if (isLoading) {
     return (
@@ -480,15 +495,16 @@ const Analysis = ({ transactions }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-white">Financial Analysis</h1>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-4">
+          <span className="text-sm text-gray-400">Currency: {selectedCurrency}</span>
           <span className="text-sm text-gray-400">Last updated: {new Date().toLocaleDateString()}</span>
         </div>
       </div>
 
       {(!transactions || transactions.length === 0) && (
-        <div className="bg-blue-900/10 border border-blue-500/30 rounded-lg p-6 mb-6">
+        <div className="bg-yellow-900/10 border border-yellow-500/30 rounded-lg p-6 mb-6">
           <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-blue-400 mx-auto mb-4" />
+            <AlertCircle className="h-12 w-12 text-yellow-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-white mb-2">No Transactions to Analyze</h3>
             <p className="text-gray-400">Add some transactions to get detailed financial analysis and insights.</p>
           </div>
@@ -600,7 +616,7 @@ const Analysis = ({ transactions }) => {
                   <td className="px-4 py-3 text-sm text-right text-gray-300">{formatCurrency(item.budget)}</td>
                   <td className="px-4 py-3 text-sm text-right text-gray-300">{formatCurrency(item.actual)}</td>
                   <td className={`px-4 py-3 text-sm text-right ${
-                    item.status === 'positive' ? 'text-green-500' : 
+                    item.status === 'positive' ? 'text-green-500' :
                     item.status === 'negative' ? 'text-red-500' : 'text-gray-500'
                   }`}>
                     {item.variance > 0 ? '+' : ''}{formatCurrency(item.variance)}

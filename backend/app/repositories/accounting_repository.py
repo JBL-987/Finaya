@@ -20,6 +20,11 @@ class AccountingRepository(BaseRepository):
         """Create a new transaction"""
         try:
             data = transaction.dict()
+
+            # Convert datetime objects to ISO strings for Supabase
+            if 'date' in data and hasattr(data['date'], 'isoformat'):
+                data['date'] = data['date'].isoformat()
+
             return self.create(data)
         except Exception as e:
             print(f"Error creating transaction: {e}")

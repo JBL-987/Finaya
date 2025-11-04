@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, AlertCircle, PieChart, TrendingUp, BarChart3, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { AlertCircle, PieChart, TrendingUp, BarChart3, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { advisorAPI } from '../../services/api';
 import { Skeleton } from '../ui/Skeleton';
+import { formatCurrency as formatCurrencyService } from '../../services/currencies';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const TaxStrategy = ({ transactions }) => {
   const [taxLiabilities, setTaxLiabilities] = useState([{
@@ -16,7 +18,7 @@ const TaxStrategy = ({ transactions }) => {
   }]);
   const [taxSavings, setTaxSavings] = useState(0);
   const [estimatedTax, setEstimatedTax] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Start with false for faster loading
   const [error, setError] = useState(null);
   const [taxParams, setTaxParams] = useState({
     income_amount: 0,
@@ -25,37 +27,29 @@ const TaxStrategy = ({ transactions }) => {
   });
   const [generatingStrategy, setGeneratingStrategy] = useState(false);
   const [aiTaxStrategy, setAiTaxStrategy] = useState(null);
+  const [monteCarloResults, setMonteCarloResults] = useState(null);
+  const [generatingMonteCarlo, setGeneratingMonteCarlo] = useState(false);
+  const { selectedCurrency } = useCurrency();
 
   useEffect(() => {
-    if (transactions) {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        if (transactions.length > 0) {
-          analyzeTaxStrategy(transactions);
-        } else {
-          setEmptyState();
-        }
-      } catch (err) {
-        setError('Failed to analyze tax strategy: ' + err.message);
-      } finally {
-        setIsLoading(false);
-      }
+    if (transactions && transactions.length > 0) {
+      // Only show loading during AI generation, not initial render
+      analyzeTaxStrategy(transactions);
+      // Automatically generate AI tax strategy when transactions are available
+      generateAITaxStrategy();
     }
   }, [transactions]);
 
+  // Auto-run Monte Carlo when AI tax strategy is generated
+  useEffect(() => {
+    if (aiTaxStrategy && taxParams.income_amount > 0 && !monteCarloResults) {
+      generateMonteCarlo();
+    }
+  }, [aiTaxStrategy, taxParams.income_amount]);
+
   const setEmptyState = () => {
-    setTaxLiabilities([{
-      type: 'No tax data',
-      amount: 0,
-      percentage: 0
-    }]);
-    setDeductions([{
-      category: 'No deductions',
-      amount: 0,
-      limit: 0
-    }]);
+    setTaxLiabilities([]);
+    setDeductions([]);
     setTaxSavings(0);
     setEstimatedTax(0);
   };
@@ -181,155 +175,50 @@ const TaxStrategy = ({ transactions }) => {
     const calculatedTax = taxableIncome * taxRate;
     setEstimatedTax(calculatedTax);
 
-    setTaxLiabilities([
-      {
-        type: 'Federal Income Tax',
-        amount: calculatedTax * 0.6,
-        percentage: 60
-      },
-      {
-        type: 'State Income Tax',
-        amount: calculatedTax * 0.25,
-        percentage: 25
-      },
-      {
-        type: 'Local Tax',
-        amount: calculatedTax * 0.1,
-        percentage: 10
-      },
-      {
-        type: 'Other Taxes',
-        amount: calculatedTax * 0.05,
-        percentage: 5
-      }
-    ]);
+    // Remove mock tax liabilities - only show if AI provides them
+    setTaxLiabilities([]);
 
-    const possibleDeductions = [
-      {
-        category: 'Charitable Contributions',
-        amount: totalExpenses * 0.05,
-        limit: totalIncome * 0.6
-      },
-      {
-        category: 'Business Expenses',
-        amount: totalExpenses * 0.3,
-        limit: totalIncome
-      },
-      {
-        category: 'Medical Expenses',
-        amount: totalExpenses * 0.08,
-        limit: totalIncome * 0.075
-      }
-    ];
-
-    setDeductions(possibleDeductions);
-    setTaxSavings((possibleDeductions.reduce((sum, d) => sum + Math.min(d.amount, d.limit), 0)) * taxRate);
+    // Remove mock deductions - only show if AI provides them
+    setDeductions([]);
+    setTaxSavings(0);
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0
-    }).format(amount || 0);
+  const generateMonteCarlo = async () => {
+    if (taxParams.income_amount <= 0) {
+      setError("No income data available for Monte Carlo simulation");
+      return;
+    }
+
+    try {
+      setGeneratingMonteCarlo(true);
+
+      const requestData = {
+        initial_investment: taxParams.income_amount,
+        risk_level: 'moderate', // Default for tax strategy
+        years: 10,
+        simulations: 1000
+      };
+
+      const response = await advisorAPI.runMonteCarlo(requestData);
+
+      if (response.success && response.results) {
+        setMonteCarloResults(response.results);
+        console.log("Monte Carlo simulation completed for tax strategy:", response.results);
+      } else {
+        console.error("Failed to run Monte Carlo simulation:", response);
+        setError("Failed to run Monte Carlo simulation");
+      }
+    } catch (error) {
+      console.error("Error running Monte Carlo simulation:", error);
+      setError("Failed to run Monte Carlo simulation: " + error.message);
+    } finally {
+      setGeneratingMonteCarlo(false);
+    }
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        {/* Header Skeleton */}
-        <div className="flex items-center justify-between mb-4">
-          <Skeleton className="h-8 w-48 bg-gray-700" />
-          <Skeleton className="h-4 w-32 bg-gray-700" />
-        </div>
+  const formatCurrency = (amount) => formatCurrencyService(amount, selectedCurrency);
 
-        {/* Metrics Cards Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl bg-gray-900 border border-gray-700 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Skeleton className="h-5 w-5 bg-gray-700" />
-                <Skeleton className="h-4 w-24 bg-gray-700" />
-              </div>
-              <Skeleton className="h-8 w-20 mb-2 bg-gray-700" />
-              <Skeleton className="h-3 w-28 bg-gray-700" />
-            </div>
-          ))}
-        </div>
-
-        {/* Tax Liabilities Skeleton */}
-        <div className="rounded-xl bg-gray-900 border border-gray-700 p-6">
-          <Skeleton className="h-6 w-48 mb-6 bg-gray-700" />
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-gray-800 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <Skeleton className="h-4 w-32 bg-gray-700" />
-                  <Skeleton className="h-4 w-20 bg-gray-700" />
-                </div>
-                <Skeleton className="h-2 w-full mb-1 bg-gray-700" />
-                <Skeleton className="h-3 w-8 ml-auto bg-gray-700" />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Deductions Analysis Skeleton */}
-        <div className="rounded-xl bg-gray-900 border border-gray-700 p-6">
-          <Skeleton className="h-6 w-36 mb-6 bg-gray-700" />
-          <div className="space-y-4">
-            {['Charitable Contributions', 'Business Expenses', 'Medical Expenses'].map((deduction, i) => (
-              <div key={i} className="bg-gray-800 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <Skeleton className="h-4 w-40 bg-gray-700" />
-                  <Skeleton className="h-4 w-16 bg-gray-700" />
-                </div>
-                <div className="flex justify-between items-end">
-                  <div className="w-1/2">
-                    <Skeleton className="h-2 w-full mb-1 bg-gray-700" />
-                  </div>
-                  <Skeleton className="h-3 w-24 bg-gray-700" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* AI Tax Strategy Skeleton */}
-        <div className="rounded-xl bg-gray-900 border border-gray-700 p-6">
-          <Skeleton className="h-6 w-48 mb-6 bg-gray-700" />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <Skeleton className="h-4 w-20 mb-2 bg-gray-700" />
-              <Skeleton className="h-10 w-full bg-gray-700" />
-            </div>
-            <div>
-              <Skeleton className="h-4 w-20 mb-2 bg-gray-700" />
-              <Skeleton className="h-10 w-full bg-gray-700" />
-            </div>
-          </div>
-
-          <div className="text-center">
-            <Skeleton className="h-12 w-48 mx-auto bg-gray-700" />
-          </div>
-        </div>
-
-        {/* Tips Section Skeleton */}
-        <div className="rounded-xl bg-gray-900 border border-gray-700 p-6">
-          <Skeleton className="h-6 w-40 mb-6 bg-gray-700" />
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex">
-                <Skeleton className="h-3 w-1 mr-2 mt-0.5 bg-gray-700" />
-                <Skeleton className="h-3 w-full bg-gray-700" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Removed heavy skeleton loading - component loads instantly now
 
   if (error) {
     return (
@@ -354,29 +243,77 @@ const TaxStrategy = ({ transactions }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6 shadow-lg">
           <div className="flex items-center gap-2 mb-4">
-            <PieChart className="h-5 w-5 text-blue-500" />
-            <h3 className="text-gray-300 font-medium">Estimated Tax</h3>
+            {isLoading ? (
+              <Skeleton className="h-5 w-5" />
+            ) : (
+              <PieChart className="h-5 w-5 text-blue-500" />
+            )}
+            {isLoading ? (
+              <Skeleton className="h-4 w-24" />
+            ) : (
+              <h3 className="text-gray-300 font-medium">Estimated Tax</h3>
+            )}
           </div>
-          <p className="text-2xl font-bold text-white">{formatCurrency(estimatedTax)}</p>
-          <p className="text-sm text-gray-400 mt-2">Based on 25% rate</p>
+          {isLoading ? (
+            <Skeleton className="h-8 w-20 mb-2" />
+          ) : (
+            <p className="text-2xl font-bold text-white">{formatCurrency(estimatedTax)}</p>
+          )}
+          {isLoading ? (
+            <Skeleton className="h-3 w-16" />
+          ) : (
+            <p className="text-sm text-gray-400 mt-2">Based on 25% rate</p>
+          )}
         </div>
         <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6 shadow-lg">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-5 w-5 text-green-500" />
-            <h3 className="text-gray-300 font-medium">Tax Savings</h3>
+            {isLoading ? (
+              <Skeleton className="h-5 w-5" />
+            ) : (
+              <TrendingUp className="h-5 w-5 text-green-500" />
+            )}
+            {isLoading ? (
+              <Skeleton className="h-4 w-24" />
+            ) : (
+              <h3 className="text-gray-300 font-medium">Tax Savings</h3>
+            )}
           </div>
-          <p className="text-2xl font-bold text-white">{formatCurrency(taxSavings)}</p>
-          <p className="text-sm text-gray-400 mt-2">From deductions</p>
+          {isLoading ? (
+            <Skeleton className="h-8 w-20 mb-2" />
+          ) : (
+            <p className="text-2xl font-bold text-white">{formatCurrency(taxSavings)}</p>
+          )}
+          {isLoading ? (
+            <Skeleton className="h-3 w-20" />
+          ) : (
+            <p className="text-sm text-gray-400 mt-2">From deductions</p>
+          )}
         </div>
         <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6 shadow-lg">
           <div className="flex items-center gap-2 mb-4">
-            <BarChart3 className="h-5 w-5 text-purple-500" />
-            <h3 className="text-gray-300 font-medium">Total Deductions</h3>
+            {isLoading ? (
+              <Skeleton className="h-5 w-5" />
+            ) : (
+              <BarChart3 className="h-5 w-5 text-purple-500" />
+            )}
+            {isLoading ? (
+              <Skeleton className="h-4 w-28" />
+            ) : (
+              <h3 className="text-gray-300 font-medium">Total Deductions</h3>
+            )}
           </div>
-          <p className="text-2xl font-bold text-white">
-            {formatCurrency(deductions.reduce((sum, d) => sum + Math.min(d.amount, d.limit), 0))}
-          </p>
-          <p className="text-sm text-gray-400 mt-2">Across categories</p>
+          {isLoading ? (
+            <Skeleton className="h-8 w-24 mb-2" />
+          ) : (
+            <p className="text-2xl font-bold text-white">
+              {formatCurrency(deductions.reduce((sum, d) => sum + Math.min(d.amount, d.limit), 0))}
+            </p>
+          )}
+          {isLoading ? (
+            <Skeleton className="h-3 w-24" />
+          ) : (
+            <p className="text-sm text-gray-400 mt-2">Across categories</p>
+          )}
         </div>
       </div>
 
@@ -444,59 +381,42 @@ const TaxStrategy = ({ transactions }) => {
       <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6 shadow-lg">
         <h2 className="mb-4 text-lg font-bold text-white">AI-Powered Tax Optimization</h2>
 
-        {!aiTaxStrategy ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Filing Status</label>
-                <select
-                  value={taxParams.filing_status}
-                  onChange={(e) => setTaxParams(prev => ({ ...prev, filing_status: e.target.value }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="single">Single</option>
-                  <option value="married_filing_jointly">Married Filing Jointly</option>
-                  <option value="married_filing_separately">Married Filing Separately</option>
-                  <option value="head_of_household">Head of Household</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Annual Income</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000"
-                  value={taxParams.income_amount}
-                  onChange={(e) => setTaxParams(prev => ({ ...prev, income_amount: parseFloat(e.target.value) || 0 }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter your annual income"
-                />
-              </div>
+        {generatingStrategy ? (
+          <div className="space-y-6">
+            <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-800/30">
+              <Skeleton className="h-6 w-48 mb-2" />
+              <Skeleton className="h-4 w-full mb-1" />
+              <Skeleton className="h-4 w-3/4" />
             </div>
-
-            <div className="text-center">
-              <button
-                onClick={generateAITaxStrategy}
-                disabled={generatingStrategy || taxParams.income_amount === 0}
-                className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                  generatingStrategy || taxParams.income_amount === 0
-                    ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-yellow-600 to-amber-500 hover:from-yellow-700 hover:to-amber-600 text-white'
-                }`}
-              >
-                {generatingStrategy ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                    Generating tax optimization strategy...
+            <div>
+              <Skeleton className="h-5 w-40 mb-4" />
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-gray-800 rounded-lg p-4">
+                    <Skeleton className="h-5 w-32 mb-2" />
+                    <Skeleton className="h-3 w-full mb-1" />
+                    <Skeleton className="h-3 w-2/3 mb-2" />
+                    <Skeleton className="h-4 w-24" />
                   </div>
-                ) : (
-                  'Generate AI Tax Strategy'
-                )}
-              </button>
-              <p className="text-xs text-gray-400 mt-2">
-                AI will optimize your tax strategy based on deductions, credits, and filing status considerations
-              </p>
+                ))}
+              </div>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-gray-800 rounded-lg p-4">
+                <Skeleton className="h-4 w-28 mb-2" />
+                <Skeleton className="h-8 w-16 mb-1" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <div className="bg-gray-800 rounded-lg p-4">
+                <Skeleton className="h-4 w-32 mb-2" />
+                <Skeleton className="h-8 w-12 mb-1" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+            </div>
+          </div>
+        ) : !aiTaxStrategy ? (
+          <div className="text-center py-8">
+            <p className="text-gray-400">No tax strategy available yet. Upload financial data to generate AI-powered tax recommendations.</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -558,16 +478,90 @@ const TaxStrategy = ({ transactions }) => {
         )}
       </div>
 
-      <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6 shadow-lg">
-        <h2 className="mb-6 text-xl font-bold text-white">Additional Tax Strategy Tips</h2>
-        <ul className="list-disc pl-5 space-y-2 text-gray-300">
-          <li>Consider increasing charitable contributions before year-end to maximize deductions (up to 60% of AGI).</li>
-          <li>Review medical expenses to ensure all eligible costs are documented (above 7.5% of AGI).</li>
-          <li>Explore additional education credits if eligible (up to $2,500 per student).</li>
-          <li>Ensure all business expenses are properly categorized for maximum deductions.</li>
-          <li>Consider tax-advantaged retirement accounts like 401(k) or IRA contributions.</li>
-        </ul>
-      </div>
+      {/* Monte Carlo Simulation - Only show when income data is available */}
+      {taxParams.income_amount > 0 && (
+        <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6 shadow-lg">
+          <div className="flex items-center mb-6">
+            <TrendingUp className="h-6 w-6 text-green-400 mr-3" />
+            <h2 className="text-xl font-bold text-white">Tax Strategy Monte Carlo Simulation</h2>
+          </div>
+
+          {!monteCarloResults ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-400 mx-auto mb-4"></div>
+              <p className="text-gray-300 mb-2">Running Monte Carlo simulation...</p>
+              <p className="text-sm text-gray-400">Analyzing tax strategy projections based on your income of {formatCurrency(taxParams.income_amount)}</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Simulation Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h3 className="text-gray-400 text-sm font-medium mb-2">Median Projection (10 years)</h3>
+                  <p className="text-2xl font-bold text-white">
+                    {formatCurrency(monteCarloResults.median_projection || 0)}
+                  </p>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h3 className="text-gray-400 text-sm font-medium mb-2">Success Rate</h3>
+                  <p className="text-2xl font-bold text-green-500">
+                    {monteCarloResults.success_rate ? `${(monteCarloResults.success_rate * 100).toFixed(1)}%` : 'N/A'}
+                  </p>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h3 className="text-gray-400 text-sm font-medium mb-2">Expected Return</h3>
+                  <p className="text-2xl font-bold text-blue-500">
+                    {monteCarloResults.expected_return ? `${(monteCarloResults.expected_return * 100).toFixed(1)}%` : 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Risk Analysis */}
+              <div className="bg-gray-800 rounded-lg p-4">
+                <h3 className="text-lg font-bold text-white mb-4">Risk Analysis</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-gray-400 text-sm font-medium mb-2">Best Case (95th percentile)</h4>
+                    <p className="text-xl font-bold text-green-400">
+                      {formatCurrency(monteCarloResults.best_case || 0)}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-400 text-sm font-medium mb-2">Worst Case (5th percentile)</h4>
+                    <p className="text-xl font-bold text-red-400">
+                      {formatCurrency(monteCarloResults.worst_case || 0)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Simulation Details */}
+              {monteCarloResults.details && (
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-white mb-4">Tax Strategy Simulation Details</h3>
+                  <div className="text-gray-300 text-sm space-y-2">
+                    <p>• Risk Level: Moderate (Tax Strategy)</p>
+                    <p>• Initial Investment: {formatCurrency(taxParams.income_amount)}</p>
+                    <p>• Time Horizon: 10 years</p>
+                    <p>• Simulations Run: 1,000</p>
+                    {monteCarloResults.details.map((detail, index) => (
+                      <p key={index}>• {detail}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => setMonteCarloResults(null)}
+                className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              >
+                Run New Simulation
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   );
 };

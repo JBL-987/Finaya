@@ -110,3 +110,17 @@ class UserService:
             data={"sub": user['email'], "user_id": user['id']},
             expires_delta=timedelta(minutes=10080)  # 7 days
         )
+
+    async def update_currency_preferences(self, user_id: int, currency_preferences: Dict[str, float]) -> bool:
+        """Update user's currency preferences"""
+        try:
+            return self.user_repo.update_currency_preferences(user_id, currency_preferences)
+        except Exception as e:
+            raise DatabaseError(f"Failed to update currency preferences: {str(e)}")
+
+    async def get_currency_preferences(self, user_id: int) -> Optional[Dict[str, float]]:
+        """Get user's currency preferences"""
+        try:
+            return self.user_repo.get_currency_preferences(user_id)
+        except Exception as e:
+            raise DatabaseError(f"Failed to get currency preferences: {str(e)}")

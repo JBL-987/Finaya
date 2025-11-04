@@ -1,6 +1,9 @@
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import httpx
+import random
+import math
+import numpy as np
 from ..repositories.advisor import AdvisorRepository
 from ..schemas.schemas import FinancialGoal, InvestmentRecommendation, TaxStrategy
 from ..core.config import settings
@@ -157,3 +160,119 @@ class AdvisorService:
             credits=["Education credits", "Energy credits"],
             recommendations=["Maximize retirement contributions", "Consider tax-loss harvesting", "Keep detailed records"]
         )
+
+    def run_monte_carlo_simulation(self, initial_investment: float, risk_level: str, years: int, simulations: int = 1000) -> Dict[str, Any]:
+        """
+        Run Monte Carlo simulation for investment portfolio using NumPy for advanced mathematical calculations
+
+        Args:
+            initial_investment: Starting investment amount
+            risk_level: 'conservative', 'moderate', or 'aggressive'
+            years: Investment time horizon
+            simulations: Number of simulation runs
+
+        Returns:
+            Dictionary with simulation results and statistics
+        """
+        # Risk-adjusted returns based on risk level
+        if risk_level == 'conservative':
+            avg_return = 0.04  # 4%
+            volatility = 0.08  # 8%
+        elif risk_level == 'moderate':
+            avg_return = 0.07  # 7%
+            volatility = 0.12  # 12%
+        elif risk_level == 'aggressive':
+            avg_return = 0.10  # 10%
+            volatility = 0.20  # 20%
+        else:
+            avg_return = 0.07
+            volatility = 0.12
+
+        # Use NumPy for vectorized Monte Carlo simulation
+        # Generate random returns for all simulations and years at once
+        # Shape: (simulations, years)
+        random_returns = np.random.normal(avg_return, volatility, (simulations, years))
+
+        # Calculate cumulative returns for each simulation
+        # Each row represents one simulation path over time
+        cumulative_returns = np.cumprod(1 + random_returns, axis=1)
+
+        # Calculate final portfolio values
+        final_values = initial_investment * cumulative_returns[:, -1]
+
+        # Calculate statistics using NumPy
+        median = np.median(final_values)
+        percentile10 = np.percentile(final_values, 10)
+        percentile90 = np.percentile(final_values, 90)
+        best_case = np.max(final_values)
+        worst_case = np.min(final_values)
+
+        # Calculate probability of positive returns
+        positive_returns = np.sum(final_values > initial_investment)
+        probability_positive = (positive_returns / simulations) * 100
+
+        # Create distribution buckets for visualization using NumPy
+        min_value = np.min(final_values)
+        max_value = np.max(final_values)
+        bucket_size = (max_value - min_value) / 20
+
+        # Use NumPy histogram for efficient bucketing
+        hist, bin_edges = np.histogram(final_values, bins=20, range=(min_value, max_value))
+
+        # Convert to dictionary format for frontend
+        distribution = {}
+        for i, count in enumerate(hist):
+            bucket_key = round(bin_edges[i], 2)
+            distribution[bucket_key] = int(count)
+
+        # Calculate Sharpe ratio (risk-adjusted return)
+        sharpe_ratio = (avg_return * 100) / (volatility * 100)
+
+        # Calculate maximum drawdown (worst case loss percentage)
+        max_drawdown = ((initial_investment - percentile10) / initial_investment) * 100
+
+        # Calculate additional statistical measures using NumPy
+        mean_final_value = np.mean(final_values)
+        std_final_value = np.std(final_values)
+        skewness = np.mean(((final_values - mean_final_value) / std_final_value) ** 3)
+        kurtosis = np.mean(((final_values - mean_final_value) / std_final_value) ** 4) - 3
+
+        # Calculate Value at Risk (VaR) at 95% confidence
+        var_95 = np.percentile(final_values, 5)  # 5th percentile
+        var_95_percentage = ((initial_investment - var_95) / initial_investment) * 100
+
+        # Calculate Conditional Value at Risk (CVaR) at 95% confidence
+        losses = initial_investment - final_values[final_values < var_95]
+        cvar_95 = np.mean(losses) if len(losses) > 0 else 0
+        cvar_95_percentage = (cvar_95 / initial_investment) * 100
+
+        return {
+            "initial_investment": initial_investment,
+            "median": median,
+            "percentile10": percentile10,
+            "percentile90": percentile90,
+            "best_case": best_case,
+            "worst_case": worst_case,
+            "probability_positive": probability_positive,
+            "distribution": distribution,
+            "simulations": simulations,
+            "years": years,
+            "avg_return": avg_return * 100,
+            "volatility": volatility * 100,
+            "sharpe_ratio": sharpe_ratio,
+            "max_drawdown": max_drawdown,
+            "risk_level": risk_level,
+            # Additional NumPy-powered statistics
+            "mean_final_value": mean_final_value,
+            "std_final_value": std_final_value,
+            "skewness": skewness,
+            "kurtosis": kurtosis,
+            "var_95": var_95,
+            "var_95_percentage": var_95_percentage,
+            "cvar_95": cvar_95,
+            "cvar_95_percentage": cvar_95_percentage,
+            # Simulation metadata
+            "computation_method": "numpy_vectorized",
+            "random_seed": None,  # Could be set for reproducibility
+            "computation_time": None  # Could track timing
+        }

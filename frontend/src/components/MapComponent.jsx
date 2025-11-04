@@ -38,7 +38,7 @@ const redMarkerIcon = new L.Icon({
 const calculateZoomFromRadius = (latitude, radiusMeters, mapWidthPx) => {
   // Input validation
   if (!radiusMeters || radiusMeters <= 0 || !mapWidthPx || mapWidthPx <= 0) {
-    return 12; // Default zoom for invalid inputs
+    return 20; // Default zoom for invalid inputs - zoomed in for location analysis
   }
 
   // Validate latitude range

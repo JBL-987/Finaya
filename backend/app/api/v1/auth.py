@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import Dict
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from ...schemas.schemas import UserCreate, User, Token
@@ -108,3 +109,40 @@ async def get_current_user_optional(token: str = Depends(oauth2_scheme)):
         return user
     except Exception:
         return None
+
+@router.get("/currency-preferences")
+async def get_currency_preferences(current_user: User = Depends(get_current_user)):
+    """Get user's currency preferences"""
+    try:
+        user_service = UserService()
+        preferences = await user_service.get_currency_preferences(current_user.id)
+        return {"success": True, "preferences": preferences or {}}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get currency preferences: {str(e)}"
+        )
+
+@router.put("/currency-preferences")
+async def update_currency_preferences(
+    preferences: Dict[str, float],
+    current_user: User = Depends(get_current_user)
+):
+    """Update user's currency preferences"""
+    try:
+        user_service = UserService()
+        success = await user_service.update_currency_preferences(current_user.id, preferences)
+        if success:
+            return {"success": True, "message": "Currency preferences updated"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to update currency preferences"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update currency preferences: {str(e)}"
+        )

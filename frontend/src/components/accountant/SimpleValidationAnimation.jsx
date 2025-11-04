@@ -1,11 +1,14 @@
 import React, { useEffect } from "react";
 import { CheckCircle, AlertTriangle, FileText, ArrowRight } from "lucide-react";
+import { formatCurrency } from "../../services/currencies";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 const SimpleValidationAnimation = ({
   transaction,
   document,
   status = "pending", // pending, valid, warning, error
 }) => {
+  const { selectedCurrency } = useCurrency();
   // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -14,12 +17,9 @@ const SimpleValidationAnimation = ({
   };
 
   // Format amount for display
-  const formatAmount = (amount) => {
-    if (!amount) return "$0.00";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
+  const formatAmount = (transaction) => {
+    if (!transaction || transaction.amount === undefined || transaction.amount === null) return "N/A";
+    return formatCurrency(transaction.amount, transaction.currency || selectedCurrency);
   };
 
   // We're not using the callback approach anymore
@@ -82,7 +82,7 @@ const SimpleValidationAnimation = ({
             {transaction?.description || "Unknown Transaction"}
           </div>
           <div className="text-sm text-gray-400">
-            {formatAmount(transaction?.amount)} •{" "}
+            {formatAmount(transaction)} •{" "}
             {formatDate(transaction?.date)}
           </div>
         </div>

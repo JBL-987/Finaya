@@ -1,6 +1,7 @@
 import { Loader, MapPin, Play, Search } from "lucide-react";
 import { useEffect, useState } from "react";
-import { CURRENCIES, getCurrencySymbol } from "../services/currencies";
+import { useCurrency } from "../contexts/CurrencyContext";
+import { CURRENCIES } from "../services/currencies";
 
 const AnalysisForm = ({
   selectedLocation,
@@ -10,22 +11,27 @@ const AnalysisForm = ({
   isAnalyzing,
   onLocationSelect,
 }) => {
+  const { selectedCurrency, formatCurrency } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-
-  const handleCurrencyChange = (e) => {
-    onParamsChange({
-      ...businessParams,
-      currency: e.target.value,
-      productPrice: "", // Reset productPrice to avoid invalid values for new currency
-    });
-  };
 
   const getInputStep = (currencyCode) => {
     const highDenominationCurrencies = ["IDR", "VND", "KRW", "JPY"];
     return highDenominationCurrencies.includes(currencyCode) ? "1000" : "0.01";
   };
+
+  // Sinkronkan currency parameter bisnis saat user mengganti currency global
+  // Sekaligus reset productPrice agar placeholder dan step sesuai currency baru
+  useEffect(() => {
+    if (businessParams?.currency !== selectedCurrency) {
+      onParamsChange({
+        ...businessParams,
+        currency: selectedCurrency,
+        productPrice: "",
+      });
+    }
+  }, [selectedCurrency]);
 
   const searchLocations = async (query) => {
     if (query.length < 3) {
@@ -68,6 +74,8 @@ const AnalysisForm = ({
     setSearchQuery("");
     setSearchResults([]);
   };
+
+  const effectiveCurrency = selectedCurrency;
 
   return (
     <div className="bg-gray-900 border-b border-gray-800 p-3">
@@ -154,23 +162,18 @@ const AnalysisForm = ({
           </div>
 
           <div className="flex items-center space-x-1 sm:space-x-2">
-            <select
-              value={businessParams.currency}
-              onChange={handleCurrencyChange}
-              className="w-16 sm:w-20 px-1 sm:px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs sm:text-sm focus:ring-1 focus:ring-yellow-400 text-white"
-            >
-              {Object.keys(CURRENCIES).map((code) => (
-                <option key={code} value={code}>
-                  {code}
-                </option>
-              ))}
-            </select>
             <span className="text-xs text-gray-300">
-              {getCurrencySymbol(businessParams.currency)}
+              {(() => {
+                const formatted = formatCurrency(0, effectiveCurrency);
+                const extracted = formatted.replace(/[0-9.,\s]/g, '');
+                // If extraction resulted in empty string or corrupted symbol, use direct symbol
+                return extracted && extracted.length > 0 ? extracted : (CURRENCIES[effectiveCurrency]?.symbol || '$');
+              })()}
             </span>
             <input
+              key={effectiveCurrency}
               type="number"
-              step={getInputStep(businessParams.currency)}
+              step={getInputStep(effectiveCurrency)}
               value={businessParams.productPrice}
               onChange={(e) =>
                 onParamsChange({
@@ -180,7 +183,11 @@ const AnalysisForm = ({
               }
               className="w-16 sm:w-20 px-1 sm:px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs sm:text-sm focus:ring-1 focus:ring-yellow-400 text-white placeholder-gray-400"
               placeholder={
-                CURRENCIES[businessParams.currency]?.placeholder || "0.00"
+                effectiveCurrency === 'IDR' ? '15000' :
+                effectiveCurrency === 'USD' ? '10.00' :
+                effectiveCurrency === 'EUR' ? '8.50' :
+                effectiveCurrency === 'JPY' ? '1000' :
+                '0.00'
               }
             />
           </div>

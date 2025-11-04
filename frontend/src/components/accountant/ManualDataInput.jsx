@@ -1,7 +1,11 @@
 import React, { useState } from "react";
 import { Calculator, Save, X, Plus, Trash2 } from "lucide-react";
+import { CURRENCIES, getCurrencySymbol } from "../../services/currencies";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 const ManualDataInput = ({ onSaveData }) => {
+  const { selectedCurrency } = useCurrency();
+
   const [formData, setFormData] = useState({
     transactionType: "expense",
     date: new Date().toISOString().split("T")[0],
@@ -12,7 +16,16 @@ const ManualDataInput = ({ onSaveData }) => {
     reference: "",
     taxDeductible: false,
     notes: "",
+    currency: selectedCurrency,
   });
+
+  // Sinkronkan currency form dengan perubahan global selectedCurrency
+  React.useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      currency: selectedCurrency,
+    }));
+  }, [selectedCurrency]);
 
   const [lineItems, setLineItems] = useState([
     { description: "", amount: "", category: "" },
@@ -179,7 +192,7 @@ const ManualDataInput = ({ onSaveData }) => {
       const success = await onSaveData(dataToSave);
 
       if (success) {
-        // Reset form after successful submission
+        // Reset form after successful submission (preserve currency)
         setFormData({
           transactionType: "expense",
           date: new Date().toISOString().split("T")[0],
@@ -190,6 +203,7 @@ const ManualDataInput = ({ onSaveData }) => {
           reference: "",
           taxDeductible: false,
           notes: "",
+          currency: formData.currency, // Preserve current currency selection
         });
 
         setLineItems([{ description: "", amount: "", category: "" }]);
@@ -208,8 +222,8 @@ const ManualDataInput = ({ onSaveData }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Transaction Type */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Transaction Type and Currency */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-1">
               Transaction Type
@@ -227,6 +241,8 @@ const ManualDataInput = ({ onSaveData }) => {
               ))}
             </select>
           </div>
+
+
 
           {/* Date */}
           <div>
@@ -258,14 +274,14 @@ const ManualDataInput = ({ onSaveData }) => {
             </label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                $
+                {getCurrencySymbol(formData.currency)}
               </span>
               <input
                 type="number"
                 name="amount"
                 value={formData.amount}
                 onChange={handleChange}
-                placeholder="0.00"
+                placeholder={CURRENCIES[formData.currency]?.placeholder || "0.00"}
                 step="0.01"
                 className={`w-full bg-gray-800 border ${
                   errors.amount ? "border-red-500" : "border-gray-700"
@@ -416,7 +432,7 @@ const ManualDataInput = ({ onSaveData }) => {
                 <div className="col-span-3">
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                      $
+                      {getCurrencySymbol(formData.currency)}
                     </span>
                     <input
                       type="number"
@@ -424,7 +440,7 @@ const ManualDataInput = ({ onSaveData }) => {
                       onChange={(e) =>
                         handleLineItemChange(index, "amount", e.target.value)
                       }
-                      placeholder="0.00"
+                      placeholder={CURRENCIES[formData.currency]?.placeholder || "0.00"}
                       step="0.01"
                       className={`w-full bg-gray-800 border ${
                         errors[`lineItem_${index}_amount`]
@@ -506,6 +522,7 @@ const ManualDataInput = ({ onSaveData }) => {
                 reference: "",
                 taxDeductible: false,
                 notes: "",
+                currency: formData.currency, // Preserve current currency selection
               });
               setLineItems([{ description: "", amount: "", category: "" }]);
               setErrors({});

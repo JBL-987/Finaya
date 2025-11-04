@@ -3,8 +3,10 @@ import { AlertCircle, Target, TrendingUp, Wallet, Brain, Lightbulb, ChevronDown 
 import { getTransactionsForDocument } from '../../utils/documentUtils';
 import { advisorAPI } from '../../services/api';
 import { Skeleton } from '../ui/Skeleton';
+import { useCurrency } from '../../contexts/CurrencyContext';
 
 const FinancialPlanning = ({ transactions }) => {
+  const { formatCurrency } = useCurrency();
   const [financialGoals, setFinancialGoals] = useState([]);
   const [cashFlow, setCashFlow] = useState({
     income: 0,
@@ -24,16 +26,27 @@ const FinancialPlanning = ({ transactions }) => {
   const [generatingPlan, setGeneratingPlan] = useState(false);
   const [showRiskAssessment, setShowRiskAssessment] = useState(false);
   const [selectedRiskTolerance, setSelectedRiskTolerance] = useState('moderate');
+  const [monteCarloResults, setMonteCarloResults] = useState(null);
+  const [generatingMonteCarlo, setGeneratingMonteCarlo] = useState(false);
 
   useEffect(() => {
     loadFinancialGoals();
   }, []);
 
   useEffect(() => {
-    if (transactions && financialGoals.length > 0) {
+    if (transactions && transactions.length > 0 && financialGoals.length > 0) {
       analyzeFinancialPlan(transactions);
+      // Automatically generate AI plan when transactions and goals are available
+      generateAIPlan();
     }
   }, [transactions, financialGoals]);
+
+  // Auto-run Monte Carlo when AI plan is generated
+  useEffect(() => {
+    if (aiPlan && netWorth > 0 && !monteCarloResults) {
+      generateMonteCarlo();
+    }
+  }, [aiPlan, netWorth]);
 
   const loadFinancialGoals = async () => {
     try {
@@ -181,13 +194,40 @@ const FinancialPlanning = ({ transactions }) => {
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0
-    }).format(amount || 0);
+  const generateMonteCarlo = async () => {
+    if (netWorth <= 0) {
+      setError("No investment capital available for Monte Carlo simulation");
+      return;
+    }
+
+    try {
+      setGeneratingMonteCarlo(true);
+
+      const requestData = {
+        initial_investment: netWorth,
+        risk_level: selectedRiskTolerance,
+        years: 10,
+        simulations: 1000
+      };
+
+      const response = await advisorAPI.runMonteCarlo(requestData);
+
+      if (response.success && response.results) {
+        setMonteCarloResults(response.results);
+        console.log("Monte Carlo simulation completed:", response.results);
+      } else {
+        console.error("Failed to run Monte Carlo simulation:", response);
+        setError("Failed to run Monte Carlo simulation");
+      }
+    } catch (error) {
+      console.error("Error running Monte Carlo simulation:", error);
+      setError("Failed to run Monte Carlo simulation: " + error.message);
+    } finally {
+      setGeneratingMonteCarlo(false);
+    }
   };
+
+
 
   if (isLoading) {
     return (
@@ -400,166 +440,191 @@ const FinancialPlanning = ({ transactions }) => {
         </div>
       </div>
 
-      {/* AI-Generated Comprehensive Plan */}
-      <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6 shadow-lg">
-        <div className="flex items-center mb-6">
-          <Brain className="h-6 w-6 text-blue-400 mr-3" />
-          <h2 className="text-xl font-bold text-white">AI-Generated Financial Plan</h2>
-        </div>
+      {/* AI-Generated Comprehensive Plan - Only show when transactions are available */}
+      {transactions && transactions.length > 0 && (
+        <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6 shadow-lg">
+          <div className="flex items-center mb-6">
+            <Brain className="h-6 w-6 text-blue-400 mr-3" />
+            <h2 className="text-xl font-bold text-white">AI-Generated Financial Plan</h2>
+          </div>
 
-        {!aiPlan ? (
-          <div className="text-center py-8">
-            <Lightbulb className="h-12 w-12 text-yellow-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">Get Personalized Financial Strategy</h3>
-            <p className="text-gray-300 mb-6">
-              Generate a comprehensive financial plan based on your financial data and risk tolerance.
-            </p>
+          {!aiPlan ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+              <p className="text-gray-300">Generating your personalized financial plan...</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Plan Overview */}
+              <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-800/30">
+                <h3 className="text-xl font-bold text-white mb-2">{aiPlan.title || 'Comprehensive Financial Plan'}</h3>
+                <p className="text-gray-300">{aiPlan.summary || aiPlan.overview}</p>
+              </div>
 
-            {/* Risk tolerance assessment */}
-            <div className="mb-6">
-              <button
-                onClick={() => setShowRiskAssessment(!showRiskAssessment)}
-                className="flex items-center text-blue-400 hover:text-blue-300 transition-colors mb-4 mx-auto"
-              >
-                <span>Assess Risk Tolerance</span>
-                <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${showRiskAssessment ? 'rotate-180' : ''}`} />
-              </button>
-
-              {showRiskAssessment && (
-                <div className="bg-gray-800 rounded-lg p-4 mb-4 max-w-md mx-auto">
-                  <h4 className="text-white font-medium mb-3">Risk Tolerance</h4>
-                  <div className="space-y-3">
-                    {[
-                      { value: 'conservative', label: 'Conservative', description: 'Prioritize capital preservation, lower potential returns' },
-                      { value: 'moderate', label: 'Moderate', description: 'Balance between growth and stability' },
-                      { value: 'aggressive', label: 'Aggressive', description: 'Focus on growth, higher risk tolerance' }
-                    ].map((level) => (
-                      <label key={level.value} className="flex items-start space-x-3 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="riskTolerance"
-                          value={level.value}
-                          checked={selectedRiskTolerance === level.value}
-                          onChange={(e) => setSelectedRiskTolerance(e.target.value)}
-                          className="mt-0.5 text-blue-500"
-                        />
-                        <div>
-                          <span className="text-white font-medium">{level.label}</span>
-                          <p className="text-gray-400 text-sm">{level.description}</p>
-                        </div>
-                      </label>
+              {/* Key Recommendations */}
+              {aiPlan.key_recommendations && aiPlan.key_recommendations.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-4">Key Recommendations</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {aiPlan.key_recommendations.map((rec, index) => (
+                      <div key={index} className="bg-gray-800 rounded-lg p-4">
+                        <h4 className="text-white font-medium mb-2">{rec.title || `Recommendation ${index + 1}`}</h4>
+                        <p className="text-gray-300 text-sm">{rec.description || rec.details}</p>
+                        {rec.timeframe && (
+                          <p className="text-blue-400 text-xs mt-2">Timeframe: {rec.timeframe}</p>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
-            </div>
 
-            <button
-              onClick={generateAIPlan}
-              disabled={generatingPlan}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                generatingPlan
-                  ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-yellow-600 to-amber-500 hover:from-yellow-700 hover:to-amber-600 text-white'
-              }`}
-            >
-              {generatingPlan ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                  Generating Plan...
+              {/* Long-term Strategy */}
+              {aiPlan.long_term_strategy && (
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-4">Long-term Strategy</h3>
+                  <div className="bg-gray-800 rounded-lg p-4">
+                    <p className="text-gray-300">{aiPlan.long_term_strategy}</p>
+                  </div>
                 </div>
-              ) : (
-                'Generate AI Plan'
               )}
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Plan Overview */}
-            <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-800/30">
-              <h3 className="text-xl font-bold text-white mb-2">{aiPlan.title || 'Comprehensive Financial Plan'}</h3>
-              <p className="text-gray-300">{aiPlan.summary || aiPlan.overview}</p>
-            </div>
 
-            {/* Key Recommendations */}
-            {aiPlan.key_recommendations && aiPlan.key_recommendations.length > 0 && (
-              <div>
-                <h3 className="text-lg font-bold text-white mb-4">Key Recommendations</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {aiPlan.key_recommendations.map((rec, index) => (
-                    <div key={index} className="bg-gray-800 rounded-lg p-4">
-                      <h4 className="text-white font-medium mb-2">{rec.title || `Recommendation ${index + 1}`}</h4>
-                      <p className="text-gray-300 text-sm">{rec.description || rec.details}</p>
-                      {rec.timeframe && (
-                        <p className="text-blue-400 text-xs mt-2">Timeframe: {rec.timeframe}</p>
+              {/* Risk Assessment Results */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {aiPlan.risk_assessment && (
+                  <div>
+                    <h3 className="text-lg font-bold text-white mb-4">Risk Assessment</h3>
+                    <div className="bg-gray-800 rounded-lg p-4">
+                      <div className="mb-3">
+                        <span className="text-gray-400 text-sm">Risk Profile: </span>
+                        <span className={`font-medium ${
+                          selectedRiskTolerance === 'conservative' ? 'text-green-400' :
+                          selectedRiskTolerance === 'moderate' ? 'text-yellow-400' : 'text-red-400'
+                        }`}>
+                          {selectedRiskTolerance.charAt(0).toUpperCase() + selectedRiskTolerance.slice(1)}
+                        </span>
+                      </div>
+                      <p className="text-gray-300">{aiPlan.risk_assessment}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Projected Outcomes */}
+                {aiPlan.projected_outcomes && (
+                  <div>
+                    <h3 className="text-lg font-bold text-white mb-4">Projected Outcomes</h3>
+                    <div className="bg-gray-800 rounded-lg p-4">
+                      {Array.isArray(aiPlan.projected_outcomes) ? (
+                        <ul className="space-y-2 text-gray-300">
+                          {aiPlan.projected_outcomes.map((outcome, index) => (
+                            <li key={index} className="flex items-start">
+                              <span className="text-blue-400 mr-2">•</span>
+                              <span>{outcome}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-gray-300">{aiPlan.projected_outcomes}</p>
                       )}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Long-term Strategy */}
-            {aiPlan.long_term_strategy && (
-              <div>
-                <h3 className="text-lg font-bold text-white mb-4">Long-term Strategy</h3>
-                <div className="bg-gray-800 rounded-lg p-4">
-                  <p className="text-gray-300">{aiPlan.long_term_strategy}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Risk Assessment Results */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {aiPlan.risk_assessment && (
-                <div>
-                  <h3 className="text-lg font-bold text-white mb-4">Risk Assessment</h3>
-                  <div className="bg-gray-800 rounded-lg p-4">
-                    <div className="mb-3">
-                      <span className="text-gray-400 text-sm">Risk Profile: </span>
-                      <span className={`font-medium ${
-                        selectedRiskTolerance === 'conservative' ? 'text-green-400' :
-                        selectedRiskTolerance === 'moderate' ? 'text-yellow-400' : 'text-red-400'
-                      }`}>
-                        {selectedRiskTolerance.charAt(0).toUpperCase() + selectedRiskTolerance.slice(1)}
-                      </span>
-                    </div>
-                    <p className="text-gray-300">{aiPlan.risk_assessment}</p>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* Projected Outcomes */}
-              {aiPlan.projected_outcomes && (
-                <div>
-                  <h3 className="text-lg font-bold text-white mb-4">Projected Outcomes</h3>
-                  <div className="bg-gray-800 rounded-lg p-4">
-                    {Array.isArray(aiPlan.projected_outcomes) ? (
-                      <ul className="space-y-2 text-gray-300">
-                        {aiPlan.projected_outcomes.map((outcome, index) => (
-                          <li key={index} className="flex items-start">
-                            <span className="text-blue-400 mr-2">•</span>
-                            <span>{outcome}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-gray-300">{aiPlan.projected_outcomes}</p>
-                    )}
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={() => setAiPlan(null)}
+                className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              >
+                Generate New Plan
+              </button>
             </div>
+          )}
+        </div>
+      )}
 
-            <button
-              onClick={() => setAiPlan(null)}
-              className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-            >
-              Generate New Plan
-            </button>
+      {/* Monte Carlo Simulation - Only show when net worth is available */}
+      {netWorth > 0 && (
+        <div className="rounded-xl bg-gray-900 border border-blue-900/30 p-6 shadow-lg">
+          <div className="flex items-center mb-6">
+            <TrendingUp className="h-6 w-6 text-green-400 mr-3" />
+            <h2 className="text-xl font-bold text-white">Monte Carlo Simulation</h2>
           </div>
-        )}
-      </div>
+
+          {!monteCarloResults ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-400 mx-auto mb-4"></div>
+              <p className="text-gray-300 mb-2">Running Monte Carlo simulation...</p>
+              <p className="text-sm text-gray-400">Analyzing investment projections based on your net worth of {formatCurrency(netWorth)}</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Simulation Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h3 className="text-gray-400 text-sm font-medium mb-2">Median Projection (10 years)</h3>
+                  <p className="text-2xl font-bold text-white">
+                    {formatCurrency(monteCarloResults.median_projection || 0)}
+                  </p>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h3 className="text-gray-400 text-sm font-medium mb-2">Success Rate</h3>
+                  <p className="text-2xl font-bold text-green-500">
+                    {monteCarloResults.success_rate ? `${(monteCarloResults.success_rate * 100).toFixed(1)}%` : 'N/A'}
+                  </p>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h3 className="text-gray-400 text-sm font-medium mb-2">Expected Return</h3>
+                  <p className="text-2xl font-bold text-blue-500">
+                    {monteCarloResults.expected_return ? `${(monteCarloResults.expected_return * 100).toFixed(1)}%` : 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Risk Analysis */}
+              <div className="bg-gray-800 rounded-lg p-4">
+                <h3 className="text-lg font-bold text-white mb-4">Risk Analysis</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-gray-400 text-sm font-medium mb-2">Best Case (95th percentile)</h4>
+                    <p className="text-xl font-bold text-green-400">
+                      {formatCurrency(monteCarloResults.best_case || 0)}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-gray-400 text-sm font-medium mb-2">Worst Case (5th percentile)</h4>
+                    <p className="text-xl font-bold text-red-400">
+                      {formatCurrency(monteCarloResults.worst_case || 0)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Simulation Details */}
+              {monteCarloResults.details && (
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h3 className="text-lg font-bold text-white mb-4">Simulation Details</h3>
+                  <div className="text-gray-300 text-sm space-y-2">
+                    <p>• Risk Level: {selectedRiskTolerance.charAt(0).toUpperCase() + selectedRiskTolerance.slice(1)}</p>
+                    <p>• Initial Investment: {formatCurrency(netWorth)}</p>
+                    <p>• Time Horizon: 10 years</p>
+                    <p>• Simulations Run: 1,000</p>
+                    {monteCarloResults.details.map((detail, index) => (
+                      <p key={index}>• {detail}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => setMonteCarloResults(null)}
+                className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              >
+                Run New Simulation
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

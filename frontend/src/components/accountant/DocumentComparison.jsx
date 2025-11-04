@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { formatCurrency as formatCurrencyService } from "../../services/currencies";
 import {
   X,
   CheckCircle,
@@ -39,13 +41,8 @@ const DocumentComparison = ({
     setNotes("");
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-    }).format(amount || 0);
-  };
+  const { selectedCurrency } = useCurrency();
+  const formatCurrency = (amount) => formatCurrencyService(amount, selectedCurrency);
 
   if (!transaction) return null;
 

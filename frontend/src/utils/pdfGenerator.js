@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { formatCurrency as formatCurrencyFromService } from "../services/currencies.js";
 
 /**
  * Generates a PDF document from transaction data
@@ -13,7 +14,7 @@ export const generateTransactionPDF = (transaction) => {
   // Add company logo/header
   doc.setFontSize(20);
   doc.setTextColor(0, 51, 153);
-  doc.text("Hi! Countant", 105, 15, { align: "center" });
+  doc.text("Finaya", 105, 15, { align: "center" });
 
   // Add transaction title
   doc.setFontSize(16);
@@ -46,7 +47,7 @@ export const generateTransactionPDF = (transaction) => {
   const detailsData = [
     ["Date", formatDate(transaction.date)],
     ["Type", capitalizeFirstLetter(transaction.transactionType)],
-    ["Amount", formatCurrency(transaction.amount)],
+    ["Amount", formatCurrency(transaction.amount, transaction.currency || "USD")],
     ["Category", transaction.category || "Uncategorized"],
     ["Payment Method", capitalizeFirstLetter(transaction.paymentMethod)],
     ["Reference", transaction.reference || "N/A"],
@@ -95,7 +96,7 @@ export const generateTransactionPDF = (transaction) => {
     const lineItemsTableBody = transaction.lineItems.map((item) => [
       item.description,
       item.category || "Uncategorized",
-      formatCurrency(parseFloat(item.amount)),
+      formatCurrency(parseFloat(item.amount), transaction.currency || "USD"),
     ]);
 
     // Add total row
@@ -106,7 +107,7 @@ export const generateTransactionPDF = (transaction) => {
         styles: { fontStyle: "bold", halign: "right" },
       },
       {
-        content: formatCurrency(parseFloat(transaction.amount)),
+        content: formatCurrency(parseFloat(transaction.amount), transaction.currency || "USD"),
         styles: { fontStyle: "bold" },
       },
     ]);
@@ -180,14 +181,47 @@ function formatDate(dateString) {
   return date.toLocaleDateString();
 }
 
-function formatCurrency(amount) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
-}
+// Use the formatCurrency function from currencies.js service
+const formatCurrency = (amount, currency = "USD") => {
+  return formatCurrencyFromService(amount, currency);
+};
 
 function capitalizeFirstLetter(string) {
   if (!string) return "";
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
+
+/**
+ * Generates and downloads a PDF receipt for manual transaction entries
+ * @param {Object} transaction - The transaction data
+ */
+export const generateTransactionReceipt = async (transaction) => {
+  try {
+    // Generate the PDF blob
+    const pdfBlob = generateTransactionPDF(transaction);
+
+    // Create a download link
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement('a');
+    link.href = url;
+
+    // Generate filename
+    const dateStr = transaction.date ? new Date(transaction.date).toISOString().split('T')[0] : 'unknown';
+    const typeStr = transaction.transactionType ? transaction.transactionType.charAt(0).toUpperCase() + transaction.transactionType.slice(1) : 'Transaction';
+    const filename = `receipt_${dateStr}_${typeStr}_${transaction.id || 'manual'}.pdf`;
+
+    link.download = filename;
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Clean up the URL object
+    URL.revokeObjectURL(url);
+
+    console.log('PDF receipt generated and downloaded successfully');
+  } catch (error) {
+    console.error('Failed to generate transaction receipt:', error);
+    throw error;
+  }
+};

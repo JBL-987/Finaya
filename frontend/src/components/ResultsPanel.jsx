@@ -1,5 +1,6 @@
 import { TrendingUp, Users, DollarSign, Calculator, MapPin, Save, X } from 'lucide-react';
 import { formatCurrency } from '../services/currencies';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 const ResultsPanel = ({
   analysisResults,
@@ -8,6 +9,8 @@ const ResultsPanel = ({
   onClose,
   onSave
 }) => {
+  const { selectedCurrency } = useCurrency();
+
   if (!showResults || !analysisResults) return null;
 
   return (
@@ -48,7 +51,7 @@ const ResultsPanel = ({
         <div className="bg-yellow-900/20 p-3 rounded-lg text-center border border-yellow-600">
           <DollarSign className="h-6 w-6 mx-auto mb-1 text-yellow-400" />
           <div className="text-xl font-bold text-white">
-            {analysisResults.metrics?.dailyRevenue !== undefined ? formatCurrency(Number(analysisResults.metrics.dailyRevenue), businessParams.currency) : 'N/A'}
+            {analysisResults.metrics?.dailyRevenue !== undefined ? formatCurrency(Number(analysisResults.metrics.dailyRevenue), selectedCurrency) : 'N/A'}
           </div>
           <div className="text-xs text-gray-300">Daily Revenue</div>
         </div>
@@ -56,7 +59,7 @@ const ResultsPanel = ({
         <div className="bg-yellow-900/20 p-3 rounded-lg text-center border border-yellow-600">
           <TrendingUp className="h-6 w-6 mx-auto mb-1 text-yellow-400" />
           <div className="text-xl font-bold text-white">
-            {analysisResults.metrics?.monthlyRevenue !== undefined ? formatCurrency(Number(analysisResults.metrics.monthlyRevenue), businessParams.currency) : 'N/A'}
+            {analysisResults.metrics?.monthlyRevenue !== undefined ? formatCurrency(Number(analysisResults.metrics.monthlyRevenue), selectedCurrency) : 'N/A'}
           </div>
           <div className="text-xs text-gray-300">Monthly Revenue</div>
         </div>

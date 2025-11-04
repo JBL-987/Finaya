@@ -69,3 +69,19 @@ class UserRepository(BaseRepository):
             return user is not None
         except Exception as e:
             raise DatabaseError(f"Failed to check email existence: {str(e)}")
+
+    def update_currency_preferences(self, user_id: int, currency_preferences: Dict[str, float]) -> bool:
+        """Update user's currency preferences"""
+        try:
+            result = self.update(user_id, {'currency_preferences': currency_preferences})
+            return result is not None
+        except Exception as e:
+            raise DatabaseError(f"Failed to update currency preferences: {str(e)}")
+
+    def get_currency_preferences(self, user_id: int) -> Optional[Dict[str, float]]:
+        """Get user's currency preferences"""
+        try:
+            user = self.get_by_id(user_id)
+            return user.get('currency_preferences') if user else None
+        except Exception as e:
+            raise DatabaseError(f"Failed to get currency preferences: {str(e)}")

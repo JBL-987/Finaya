@@ -4,6 +4,7 @@ import { captureMapScreenshot } from '../services/mapScreenshot';
 import { CURRENCIES } from '../services/currencies';
 import { useAnalysis } from '../hooks/useAnalysis';
 import { analysisAPI } from '../services/api';
+import { useCurrency } from '../contexts/CurrencyContext';
 import MapComponent from './MapComponent';
 import AnalysisForm from './AnalysisForm';
 import ProgressPanel from './ProgressPanel';
@@ -11,12 +12,13 @@ import ResultsPanel from './ResultsPanel';
 
 
 const BusinessAnalysisApp = () => {
+  const { selectedCurrency } = useCurrency();
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [businessParams, setBusinessParams] = useState({
     buildingWidth: '',
     operatingHours: '',
     productPrice: '',
-    currency: 'IDR'
+    currency: selectedCurrency
   });
   const [analysisResults, setAnalysisResults] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -24,6 +26,14 @@ const BusinessAnalysisApp = () => {
   const [showResults, setShowResults] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const { analyses, isLoading: analysisLoading, error: analysisError, createAnalysis, getAnalyses } = useAnalysis();
+
+  // Sinkronkan currency di businessParams bila user mengganti currency global
+  useEffect(() => {
+    setBusinessParams((prev) => ({
+      ...prev,
+      currency: selectedCurrency
+    }));
+  }, [selectedCurrency]);
 
   // Progress tracking states
   const [analysisProgress, setAnalysisProgress] = useState({
@@ -255,7 +265,7 @@ const BusinessAnalysisApp = () => {
       updateProgress(6, 'completed', 'Traffic analysis complete!');
       updateProgress(7, 'completed', 'Revenue projection complete!', {
         tppd: `${response.metrics.tppd} potnetial daily customers`,
-        monthlyRevenue: `${CURRENCIES[businessParams.currency]?.symbol || ''}${response.metrics.monthlyRevenue.toLocaleString()}`
+        monthlyRevenue: `${CURRENCIES[selectedCurrency]?.symbol || ''}${response.metrics.monthlyRevenue.toLocaleString()}`
       });
       updateProgress(8, 'completed', 'Analysis complete! Results ready to display.');
 
@@ -310,7 +320,7 @@ const BusinessAnalysisApp = () => {
 
   const resetAnalysis = () => {
     setSelectedLocation(null);
-    setBusinessParams({ buildingWidth: '', operatingHours: '', productPrice: '', currency: 'IDR' });
+    setBusinessParams({ buildingWidth: '', operatingHours: '', productPrice: '', currency: selectedCurrency });
     setAnalysisResults(null);
     setCurrentStep(1);
     setShowResults(false);
@@ -345,7 +355,7 @@ const BusinessAnalysisApp = () => {
         location: `${selectedLocation.lat}, ${selectedLocation.lng}`,
         analysis_type: 'business_profitability',
         data: analysisResults,
-        gemini_analysis: analysisResults.areaDistribution
+        qwen_analysis: analysisResults.areaDistribution
       };
 
       await createAnalysis(analysisData);
@@ -385,6 +395,7 @@ const BusinessAnalysisApp = () => {
       {/* Analysis Form */}
       <div className="bg-gray-800 border-b border-gray-700">
         <AnalysisForm
+          key={selectedCurrency}
           selectedLocation={selectedLocation}
           businessParams={businessParams}
           onParamsChange={setBusinessParams}

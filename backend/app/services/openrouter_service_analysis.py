@@ -284,12 +284,12 @@ def parse_area_distribution(response_text: str) -> AreaDistribution:
 async def calculate_business_metrics(area_distribution: AreaDistribution, business_params: Dict[str, Any], screenshot_metadata: Dict[str, Any]) -> Dict[str, Any]:
     """
     Calculate business profitability metrics based on area distribution and business parameters
-    
+
     Args:
-        area_distribution: AreaDistribution object from Gemini analysis
+        area_distribution: AreaDistribution object from OpenRouter analysis
         business_params: Business parameters (buildingWidth, operatingHours, productPrice)
         screenshot_metadata: Screenshot metadata (width, height, scale)
-    
+
     Returns:
         Dict with calculated metrics
     """

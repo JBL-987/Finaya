@@ -1,10 +1,13 @@
-from typing import Callable, Type, Any, Optional
+from typing import Callable, Type, Any, Optional, Dict
 from functools import lru_cache
 from contextlib import asynccontextmanager
 import logging
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 
 from .database import Database
 from .config import settings
+from .security import SecurityManager
 from ..repositories.base_repository import BaseRepository
 from ..repositories.analysis_repository import AnalysisRepository
 from ..repositories.accounting_repository import AccountingRepository
@@ -169,6 +172,39 @@ async def get_document_service() -> DocumentService:
 async def get_user_service() -> UserService:
     """Dependency to get user service"""
     return await container.get_user_service()
+
+# OAuth2 scheme for authentication
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+# Authentication dependency
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> Dict[str, Any]:
+    """Get current authenticated user from JWT token"""
+    try:
+        security = SecurityManager()
+        email = security.verify_token(token)
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        user_service = UserService()
+        user = await user_service.get_user_by_email(email)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while validating credentials"
+        )
 
 # Context manager for container lifecycle
 @asynccontextmanager

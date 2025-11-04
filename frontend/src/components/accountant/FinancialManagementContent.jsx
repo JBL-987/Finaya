@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
+import Swal from "sweetalert2";
 import { accountingAPI } from "../../services/api";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 // Import Accountant components
 import DataInput from "./DataInput";
@@ -21,8 +23,11 @@ import TaxStrategy from "../advisor/TaxStrategy";
 export default function FinancialManagementContent({
   activeMainCategory,
   activeSubTab,
-  onLoadTransactions
+  onLoadTransactions,
+  onSwitchSubTab
 }) {
+  const { selectedCurrency } = useCurrency();
+
   // State management
   const [files, setFiles] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -32,6 +37,69 @@ export default function FinancialManagementContent({
   const [dragActive, setDragActive] = useState(false);
   const [analyzingFile, setAnalyzingFile] = useState("");
   const [selectedTransaction, setSelectedTransaction] = useState(null);
+
+  // Load files from localStorage on component mount
+  useEffect(() => {
+    try {
+      const storedFiles = localStorage.getItem('uploadedFiles');
+      if (storedFiles) {
+        const parsedFiles = JSON.parse(storedFiles);
+        console.log('Loaded files from localStorage:', parsedFiles.length);
+        setFiles(parsedFiles);
+      }
+    } catch (error) {
+      console.error('Failed to load files from localStorage:', error);
+    }
+  }, []);
+
+  // Save files to localStorage whenever files state changes
+  useEffect(() => {
+    try {
+      if (files.length > 0) {
+        localStorage.setItem('uploadedFiles', JSON.stringify(files));
+        console.log('Saved files to localStorage:', files.length);
+      } else {
+        // Clear localStorage if no files
+        localStorage.removeItem('uploadedFiles');
+      }
+    } catch (error) {
+      console.error('Failed to save files to localStorage:', error);
+    }
+  }, [files]);
+
+  // Workspace folder structure state
+  const [folderStructure, setFolderStructure] = useState({
+    Financial_Reports: {
+      expanded: false,
+      description: "All main financial reports (Balance Sheet, Income Statement, etc.)",
+      purpose: "For stakeholders (investors, board, auditors)",
+      files: [],
+    },
+    Managerial_Reports: {
+      expanded: false,
+      description: "All reports for internal use (performance, cost, forecast)",
+      purpose: "For CEO, managers, decision making",
+      files: [],
+    },
+    Tax_Reports: {
+      expanded: false,
+      description: "Official tax reports for the government",
+      purpose: "For tax compliance and SPT reporting",
+      files: [],
+    },
+    Compliance_Documents: {
+      expanded: false,
+      description: "Audit reports, proof of tax compliance, internal control documents",
+      purpose: "For legal proof and external reviews",
+      files: [],
+    },
+    Uncategorized: {
+      expanded: true,
+      description: "Files that have not been categorized yet",
+      purpose: "Temporary storage for new uploads",
+      files: files || [],
+    },
+  });
 
   // Processing log state
   const [processingLogs, setProcessingLogs] = useState([]);
@@ -171,9 +239,32 @@ export default function FinancialManagementContent({
     console.log("Downloading file:", fileName, category, fileUrl);
     addProcessingLog(`Downloading file: ${fileName}`, "info");
 
-    // Here you would implement actual file download logic
-    // For now, just show a message
-    addProcessingLog(`File download not yet implemented`, "warning");
+    // Find the file in the workspace to check if it has blob data
+    const allFiles = Object.values(folderStructure).flatMap(folder => folder.files);
+    const file = allFiles.find(f => f.name === fileName);
+
+    if (file && file.blob && file.blob instanceof Blob) {
+      // Download blob data directly
+      console.log("Downloading blob data for:", fileName);
+      const url = URL.createObjectURL(file.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      addProcessingLog(`Downloaded ${fileName} successfully`, "success");
+    } else {
+      // For files without blob data, show placeholder message
+      addProcessingLog(`File download not available for ${fileName} (no data available)`, "warning");
+
+      // Show user notification
+      import("../../utils/toastNotification.js").then(({ showToast }) => {
+        showToast(`Download not available for ${fileName}`, "warning");
+      });
+    }
   };
 
   const handleFileProcessing = async (file) => {
@@ -235,45 +326,108 @@ export default function FinancialManagementContent({
     addProcessingLog("Saving manual transaction data", "info");
 
     try {
-      // Here you would save to backend API
-      // For now, just add to transactions
-      const newTransaction = {
-        id: Date.now(),
-        date: manualData.date,
+      // Prepare transaction data for backend API
+      const transactionData = {
+        date: new Date(manualData.date).toISOString().split('T')[0], // Ensure date format
         description: manualData.description,
-        amount: manualData.amount,
+        amount: parseFloat(manualData.amount),
         category: manualData.category,
-        transactionType: manualData.transactionType,
-        sourceFile: "Manual Entry",
-        timestamp: new Date().toISOString()
+        type: manualData.transactionType, // Backend expects 'type', not 'transactionType'
+        payment_method: manualData.paymentMethod,
+        reference: manualData.reference,
+        tax_deductible: manualData.taxDeductible,
+        source_file: "Manual Entry",
+        currency: manualData.currency || selectedCurrency
       };
 
-      setTransactions(prevTransactions => [...prevTransactions, newTransaction]);
+      // Save to backend API
+      console.log("Sending transaction data to backend:", transactionData);
+      const response = await accountingAPI.createTransaction(transactionData);
+      console.log("Backend response:", response);
 
-      // Generate filename for manual entry (following the pattern in Workspace.jsx)
-      const dateStr = new Date(manualData.date).toISOString().split('T')[0];
-      const typeStr = manualData.transactionType.charAt(0).toUpperCase() + manualData.transactionType.slice(1);
-      const fileName = `${dateStr}_${typeStr}_${Date.now()}.pdf`;
+      if (response.success) {
+        addProcessingLog("Transaction saved to database successfully", "success");
 
-      // Create a file entry for the manual transaction in the workspace
-      const manualEntryFile = {
-        id: Date.now() + 1, // Ensure unique ID
-        name: fileName,
-        type: 'application/pdf',
-        size: 0, // Manual entries don't have actual file size
-        date: new Date().toISOString(),
-        status: 'processed', // Manual entries are automatically "processed"
-        isManualEntry: true,
-        transactionData: newTransaction
-      };
+        // Reload transactions from backend to get the updated list
+        await loadTransactions();
 
-      // Add to files list (this will appear in the Uncategorized folder)
-      setFiles(prevFiles => [...prevFiles, manualEntryFile]);
+        // Generate filename for manual entry (following the pattern in Workspace.jsx)
+        const dateStr = new Date(manualData.date).toISOString().split('T')[0];
+        const typeStr = manualData.transactionType.charAt(0).toUpperCase() + manualData.transactionType.slice(1);
+        const fileName = `${dateStr}_${typeStr}_${Date.now()}.pdf`;
 
-      addProcessingLog("Manual transaction saved successfully", "success");
-      addProcessingLog(`Manual entry saved to workspace: ${fileName}`, "info");
+        // Create a file entry for the manual transaction in the workspace
+        const manualEntryFile = {
+          id: Date.now() + 1, // Ensure unique ID
+          name: fileName,
+          type: 'application/pdf',
+          size: 0, // Manual entries don't have actual file size
+          date: new Date().toISOString(),
+          status: 'processed', // Manual entries are automatically "processed"
+          isManualEntry: true,
+          transactionData: response.transaction
+        };
+
+        // Add to files list (this will appear in the workspace)
+        setFiles(prevFiles => [...prevFiles, manualEntryFile]);
+
+        addProcessingLog(`Manual entry saved to workspace: ${fileName}`, "info");
+
+        // Handle automatic analysis results if available
+        if (response.automatic_analysis) {
+          const analysis = response.automatic_analysis;
+
+          // Show comprehensive analysis results to user
+          setTimeout(async () => {
+            const { showToast } = await import("../../utils/toastNotification.js");
+
+            // Show success message with analysis summary
+            const monteCarlo = analysis.monte_carlo_simulation;
+            const successRate = monteCarlo ? `${monteCarlo.probability_positive?.toFixed(1)}%` : 'N/A';
+
+            showToast(
+              `🎉 Transaction saved! AI Analysis: ${analysis.investment_recommendations?.length || 0} investments, ${successRate} success rate`,
+              "success"
+            );
+
+            // Show additional toast with tip
+            setTimeout(() => {
+              showToast("💡 Visit the Advisor section to see detailed analysis and recommendations!", "info");
+            }, 2000);
+
+          }, 1000);
+        } else {
+          // Fallback success message if no automatic analysis
+          setTimeout(() => {
+            import("../../utils/toastNotification.js").then(({ showToast }) => {
+              showToast("Transaction saved successfully! Analysis and validation will update automatically.", "success");
+            });
+          }, 500);
+        }
+
+        // Auto-navigate to Recommendations tab after save
+        try {
+          onSwitchSubTab?.("recommendations");
+        } catch {}
+
+        // Force re-render of components by triggering a state update
+        // This ensures Analysis, Validation, and LogTrails components get the latest data
+        setTimeout(() => {
+          console.log("Triggering component updates after manual transaction save");
+        }, 500);
+
+      } else {
+        throw new Error(response.message || "Failed to save transaction");
+      }
+
     } catch (error) {
+      console.error("Error saving manual data:", error);
       addProcessingLog(`Failed to save manual data: ${error.message}`, "error");
+
+      // Show error to user
+      import("../../utils/toastNotification.js").then(({ showToast }) => {
+        showToast(`Failed to save transaction: ${error.message}`, "error");
+      });
     }
   };
 
@@ -291,67 +445,68 @@ export default function FinancialManagementContent({
   };
 
   const handleDeleteTransaction = async (transactionId) => {
-    Swal.fire({
-      title: "Are you sure?",
-      text: "This transaction will be permanently deleted.",
-      icon: "warning",
+    console.log('Delete transaction called with ID:', transactionId);
+
+    const result = await Swal.fire({
+      title: 'Delete Transaction?',
+      text: 'Are you sure you want to delete this transaction? This action cannot be undone.',
+      icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Yes, delete it!",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          // Delete from backend API
-          const response = await accountingAPI.deleteTransaction(transactionId);
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    });
 
-          if (response.success) {
-            // Find the transaction to be deleted (for notification)
-            const transactionToDelete = transactions.find(
-              (t) => t.id === transactionId
-            );
-            const transactionDesc = transactionToDelete
-              ? transactionToDelete.description ||
-                `${transactionToDelete.transactionType} transaction`
-              : "transaction";
+    if (result.isConfirmed) {
+      try {
+        // Delete from backend API
+        const response = await accountingAPI.deleteTransaction(transactionId);
 
-            // Update local state
-            setTransactions(prevTransactions =>
-              prevTransactions.filter((t) => t.id !== transactionId)
-            );
+        if (response.success) {
+          // Find the transaction to be deleted (for notification)
+          const transactionToDelete = transactions.find(
+            (t) => t.id === transactionId
+          );
+          const transactionDesc = transactionToDelete
+            ? transactionToDelete.description ||
+              `${transactionToDelete.transactionType} transaction`
+            : "transaction";
 
-            // Show success notification
-            import("../../utils/toastNotification.js").then(({ showToast }) => {
-              showToast(
-                `Transaction "${transactionDesc}" deleted successfully`,
-                "success"
-              );
-            });
+          // Update local state
+          setTransactions(prevTransactions =>
+            prevTransactions.filter((t) => t.id !== transactionId)
+          );
 
-            // Add to processing log
-            addProcessingLog(`Deleted transaction: ${transactionDesc}`, "info");
-          } else {
-            throw new Error(response.message || "Failed to delete transaction");
-          }
-        } catch (error) {
-          console.error("Failed to delete transaction:", error);
-
-          // Show error toast
-          import("../../utils/toastNotification").then(({ showToast }) => {
-            showToast(
-              `Failed to delete transaction: ${error.message}`,
-              "error"
-            );
-          });
+          // Show success notification
+          const { showToast } = await import("../../utils/toastNotification.js");
+          showToast(
+            `Transaction "${transactionDesc}" deleted successfully`,
+            "success"
+          );
 
           // Add to processing log
-          addProcessingLog(
-            `Failed to delete transaction: ${error.message}`,
-            "error"
-          );
+          addProcessingLog(`Deleted transaction: ${transactionDesc}`, "info");
+        } else {
+          throw new Error(response.message || "Failed to delete transaction");
         }
+      } catch (error) {
+        console.error("Failed to delete transaction:", error);
+
+        // Show error toast
+        const { showToast } = await import("../../utils/toastNotification.js");
+        showToast(
+          `Failed to delete transaction: ${error.message}`,
+          "error"
+        );
+
+        // Add to processing log
+        addProcessingLog(
+          `Failed to delete transaction: ${error.message}`,
+          "error"
+        );
       }
-    });
+    }
   };
 
   const handleDeleteAllTransactions = async () => {
@@ -363,130 +518,80 @@ export default function FinancialManagementContent({
       return;
     }
 
-    Swal.fire({
-      title: "Delete All Transactions?",
-      text: "This will permanently delete ALL transactions. This action cannot be undone!",
-      icon: "warning",
+    // Show confirmation dialog using SweetAlert2
+    const result = await Swal.fire({
+      title: 'Delete All Transactions?',
+      text: `This will permanently delete ALL ${transactions.length} transactions. This action cannot be undone!`,
+      icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Yes, delete all!",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          // Get the count for the notification
-          const count = transactions.length;
-
-          // IMMEDIATELY show a loading dialog that can't be dismissed
-          Swal.fire({
-            title: "Deleting Transactions...",
-            html: `
-              <div class="text-center">
-                <div class="mb-3">Deleting ${count} transactions</div>
-                <div class="progress-bar-container" style="height: 10px; background-color: #333; border-radius: 5px; overflow: hidden;">
-                  <div id="delete-progress-bar" style="height: 100%; width: 0%; background-color: #dc3545; transition: width 0.3s;"></div>
-                </div>
-                <div id="delete-progress-text" class="mt-2">Starting deletion...</div>
-              </div>
-            `,
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            didOpen: () => {
-              const progressBar = document.getElementById(
-                "delete-progress-bar"
-              );
-              const progressText = document.getElementById(
-                "delete-progress-text"
-              );
-
-              // Start with animation to show it's working
-              progressBar.style.width = "5%";
-              progressText.textContent = "Preparing to delete...";
-            },
-          });
-
-          // Wait a moment to show the dialog
-          await new Promise((resolve) => setTimeout(resolve, 300));
-
-          const progressBar = document.getElementById("delete-progress-bar");
-          const progressText = document.getElementById("delete-progress-text");
-
-          // Delete all transactions from backend
-          const deletePromises = transactions.map(async (transaction) => {
-            try {
-              await accountingAPI.deleteTransaction(transaction.id);
-              return true;
-            } catch (error) {
-              console.error(`Failed to delete transaction ${transaction.id}:`, error);
-              return false;
-            }
-          });
-
-          // Process in batches to update the UI
-          const batchSize = 10;
-          const batches = Math.ceil(count / batchSize);
-
-          // Process in batches
-          for (let i = 0; i < batches; i++) {
-            const batch = deletePromises.slice(i * batchSize, (i + 1) * batchSize);
-            await Promise.all(batch);
-
-            // Update progress
-            const progress = 5 + Math.round(((i + 1) / batches) * 95);
-            progressBar.style.width = `${progress}%`;
-            progressText.textContent = `Deleting transactions (${Math.min(
-              (i + 1) * batchSize,
-              count
-            )}/${count})`;
-
-            // Small delay to keep UI responsive
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-
-          // Final update
-          progressBar.style.width = "100%";
-          progressText.textContent = `Deleted ${count} transactions successfully!`;
-
-          // Refresh transactions from backend
-          await loadTransactions();
-
-          // Close the loading dialog after a short delay
-          setTimeout(() => {
-            Swal.close();
-
-            // Show success notification
-            import("../../utils/toastNotification").then(({ showToast }) => {
-              showToast(
-                `Successfully deleted ${count} transactions`,
-                "success"
-              );
-            });
-          }, 1000);
-
-          // Add to processing log
-          addProcessingLog(
-            `Deleted ${count} transactions from database`,
-            "info"
-          );
-        } catch (error) {
-          console.error("Failed to delete all transactions:", error);
-
-          // Show error toast
-          import("../../utils/toastNotification").then(({ showToast }) => {
-            showToast(
-              `Failed to delete transactions: ${error.message}`,
-              "error"
-            );
-          });
-
-          // Add to processing log
-          addProcessingLog(
-            `Failed to delete transactions: ${error.message}`,
-            "error"
-          );
-        }
-      }
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, delete all!',
+      cancelButtonText: 'Cancel'
     });
+
+    if (result.isConfirmed) {
+      try {
+        // Get the count for the notification
+        const count = transactions.length;
+
+        // Show initial progress toast
+        import("../../utils/toastNotification").then(({ showToast }) => {
+          showToast(`Starting deletion of ${count} transactions...`, "info");
+        });
+
+        // Delete all transactions from backend
+        const deletePromises = transactions.map(async (transaction) => {
+          try {
+            await accountingAPI.deleteTransaction(transaction.id);
+            return true;
+          } catch (error) {
+            console.error(`Failed to delete transaction ${transaction.id}:`, error);
+            return false;
+          }
+        });
+
+        // Process in batches
+        const batchSize = 10;
+        const batches = Math.ceil(count / batchSize);
+
+        // Process in batches
+        for (let i = 0; i < batches; i++) {
+          const batch = deletePromises.slice(i * batchSize, (i + 1) * batchSize);
+          await Promise.all(batch);
+
+          // Show progress update
+          const processed = Math.min((i + 1) * batchSize, count);
+          import("../../utils/toastNotification").then(({ showToast }) => {
+            showToast(`Deleting transactions... (${processed}/${count})`, "info");
+          });
+
+          // Small delay to keep UI responsive
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        // Refresh transactions from backend
+        await loadTransactions();
+
+        // Show success notification
+        import("../../utils/toastNotification").then(({ showToast }) => {
+          showToast(`Successfully deleted ${count} transactions`, "success");
+        });
+
+        // Add to processing log
+        addProcessingLog(`Deleted ${count} transactions from database`, "info");
+      } catch (error) {
+        console.error("Failed to delete all transactions:", error);
+
+        // Show error toast
+        import("../../utils/toastNotification").then(({ showToast }) => {
+          showToast(`Failed to delete transactions: ${error.message}`, "error");
+        });
+
+        // Add to processing log
+        addProcessingLog(`Failed to delete transactions: ${error.message}`, "error");
+      }
+    }
   };
 
   const handleExportTransactions = () => {
@@ -593,25 +698,36 @@ export default function FinancialManagementContent({
     try {
       console.log("Loading transactions from backend API...");
       const response = await accountingAPI.getTransactions();
-      console.log("Transactions loaded from API:", response);
+      console.log("Raw API response:", response);
 
-      if (response.success && response.transactions && response.transactions.length > 0) {
-        console.log(`Setting ${response.transactions.length} transactions from API`);
+      if (response && response.length > 0) {
+        console.log(`Setting ${response.length} transactions from API`);
 
         // Format transactions to ensure they match our expected structure
-        const formattedTransactions = response.transactions.map((t) => ({
-          id: t.id,
-          transactionType: t.type,
-          amount: parseFloat(t.amount || "0"),
-          date: t.date || "",
-          description: t.description || "",
-          category: t.category || null,
-          paymentMethod: t.payment_method || null,
-          reference: t.reference || null,
-          taxDeductible: !!t.tax_deductible,
-          sourceFile: t.source_file || null,
-          timestamp: t.created_at || new Date().toISOString(),
-        }));
+        const formattedTransactions = response.map((t) => {
+          console.log('Transaction from backend:', {
+            id: t.id,
+            amount: t.amount,
+            currency: t.currency,
+            type: t.type,
+            description: t.description
+          });
+
+          return {
+            id: t.id,
+            transactionType: t.type, // Map 'type' to 'transactionType'
+            amount: parseFloat(t.amount || "0"),
+            date: t.date || "",
+            description: t.description || "",
+            category: t.category || null,
+            paymentMethod: t.payment_method || null,
+            reference: t.reference || null,
+            taxDeductible: !!t.tax_deductible,
+            sourceFile: t.source_file || null, // Map 'source_file' to 'sourceFile'
+            currency: t.currency || "IDR", // Default to IDR instead of USD
+            timestamp: t.created_at || new Date().toISOString(),
+          };
+        });
 
         // Remove any duplicate transactions
         const uniqueTransactions = removeDuplicateTransactions(formattedTransactions);
@@ -687,11 +803,8 @@ export default function FinancialManagementContent({
                 files={files}
                 isLoading={isLoading}
                 handleFileDownload={handleFileDownload}
-                handleFileProcessing={handleFileProcessing}
                 handleFileDelete={handleFileDelete}
                 handleProcessAllFiles={handleProcessAllFiles}
-                getFileIcon={getFileIcon}
-                analyzingFile={analyzingFile}
                 errorMessage={errorMessage}
                 fileTransferProgress={fileTransferProgress}
                 onSaveManualData={handleSaveManualData}

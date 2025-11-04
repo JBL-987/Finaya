@@ -1,5 +1,7 @@
 import React from "react";
 import { X, Download, FileText } from "lucide-react";
+import { formatCurrency } from "../../services/currencies";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 const TransactionDetails = ({ transaction, onClose, onDownloadPdf }) => {
   // Format date for display
@@ -10,12 +12,34 @@ const TransactionDetails = ({ transaction, onClose, onDownloadPdf }) => {
   };
 
   // Format amount for display
-  const formatAmount = (amount) => {
-    if (amount === undefined || amount === null) return "N/A";
-    return parseFloat(amount).toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-    });
+  const { selectedCurrency } = useCurrency();
+
+  const formatAmount = (transaction) => {
+    if (!transaction || transaction.amount === undefined || transaction.amount === null) return "N/A";
+    return formatCurrency(transaction.amount, transaction.currency || selectedCurrency);
+  };
+
+  // Generate PDF receipt for manual entries
+  const generateManualEntryPDF = async (transaction) => {
+    try {
+      // Import the PDF generator dynamically
+      const { generateTransactionReceipt } = await import("../../utils/pdfGenerator.js");
+
+      // Generate the PDF
+      await generateTransactionReceipt(transaction);
+
+      // Show success notification
+      import("../../utils/toastNotification.js").then(({ showToast }) => {
+        showToast("PDF receipt generated successfully", "success");
+      });
+    } catch (error) {
+      console.error("Failed to generate PDF receipt:", error);
+
+      // Show error notification
+      import("../../utils/toastNotification.js").then(({ showToast }) => {
+        showToast("Failed to generate PDF receipt", "error");
+      });
+    }
   };
 
   return (
@@ -50,7 +74,7 @@ const TransactionDetails = ({ transaction, onClose, onDownloadPdf }) => {
                 }`}
               >
                 {transaction.transactionType === "expense" ? "-" : "+"}
-                {formatAmount(transaction.amount)}
+                {formatAmount(transaction)}
               </p>
             </div>
 
@@ -104,14 +128,22 @@ const TransactionDetails = ({ transaction, onClose, onDownloadPdf }) => {
 
             <div>
               <h3 className="text-sm font-medium text-gray-400 mb-1">
-                Source File
+                Source Document
               </h3>
               <div className="flex items-center">
                 <FileText className="h-4 w-4 mr-2 text-blue-400" />
                 <p className="text-white">
                   {transaction.sourceFile || "Manual Entry"}
                 </p>
-                {transaction.sourceFile && (
+                {transaction.sourceFile === "Manual Entry" ? (
+                  <button
+                    onClick={() => generateManualEntryPDF(transaction)}
+                    className="ml-2 text-green-400 hover:text-green-300"
+                    title="Generate PDF Receipt"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
+                ) : transaction.sourceFile ? (
                   <button
                     onClick={() =>
                       onDownloadPdf && onDownloadPdf(transaction.sourceFile)
@@ -120,8 +152,13 @@ const TransactionDetails = ({ transaction, onClose, onDownloadPdf }) => {
                   >
                     <Download className="h-4 w-4" />
                   </button>
-                )}
+                ) : null}
               </div>
+              {transaction.sourceFile === "Manual Entry" && (
+                <p className="text-xs text-green-400 mt-1">
+                  Click download to generate a PDF receipt for this manual entry
+                </p>
+              )}
             </div>
           </div>
 

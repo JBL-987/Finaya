@@ -1,7 +1,6 @@
 import { Menu, Search, Bell, Settings } from "lucide-react";
-import { CURRENCIES, getCurrencySymbol, getCurrencyName } from "../../services/currencies";
 
-export default function FinancialManagementHeader({ activeMainCategory, activeSubTab, selectedCurrency, setSelectedCurrency }) {
+export default function FinancialManagementHeader({ activeMainCategory, activeSubTab, selectedCurrency }) {
   return (
     <div className="flex items-center justify-between h-16 px-4 border-b border-slate-800 bg-gray-900">
       {/* Mobile menu button */}
@@ -38,20 +37,7 @@ export default function FinancialManagementHeader({ activeMainCategory, activeSu
         </div>
       </div>
 
-      {/* Currency Selector */}
-      <div className="flex items-center mr-4">
-        <select
-          value={selectedCurrency}
-          onChange={(e) => setSelectedCurrency(e.target.value)}
-          className="bg-gray-800 border border-gray-700 rounded-md px-3 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500"
-        >
-          {Object.entries(CURRENCIES).map(([code, info]) => (
-            <option key={code} value={code}>
-              {info.symbol} {code} - {info.name}
-            </option>
-          ))}
-        </select>
-      </div>
+
 
       {/* Right buttons */}
       <div className="flex items-center space-x-4">

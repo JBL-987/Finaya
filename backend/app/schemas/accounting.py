@@ -8,7 +8,12 @@ class TransactionBase(BaseModel):
     description: str
     amount: float
     category: str
-    type: str  # income or expense
+    type: str  # income, expense, transfer, asset purchase, liability, or equity
+    payment_method: Optional[str] = None
+    reference: Optional[str] = None
+    tax_deductible: Optional[bool] = False
+    source_file: Optional[str] = None
+    currency: Optional[str] = "USD"
 
 class TransactionCreate(TransactionBase):
     user_id: int

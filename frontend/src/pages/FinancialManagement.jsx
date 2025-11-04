@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 // Import modular components
 import FinancialManagementSidebar from "../components/accountant/FinancialManagementSidebar";
@@ -6,16 +7,9 @@ import FinancialManagementHeader from "../components/accountant/FinancialManagem
 import FinancialManagementContent from "../components/accountant/FinancialManagementContent";
 
 function FinancialManagement() {
+  const { selectedCurrency } = useCurrency();
   const [activeMainCategory, setActiveMainCategory] = useState("accountant");
   const [activeSubTab, setActiveSubTab] = useState("data-input");
-  const [selectedCurrency, setSelectedCurrency] = useState(
-    localStorage.getItem('selectedCurrency') || 'IDR'
-  );
-
-  // Save currency to localStorage when it changes
-  useEffect(() => {
-    localStorage.setItem('selectedCurrency', selectedCurrency);
-  }, [selectedCurrency]);
 
   // Handle transactions loaded from content component
   const handleTransactionsLoaded = (transactions) => {
@@ -41,7 +35,6 @@ function FinancialManagement() {
             activeMainCategory={activeMainCategory}
             activeSubTab={activeSubTab}
             selectedCurrency={selectedCurrency}
-            setSelectedCurrency={setSelectedCurrency}
           />
 
           {/* Content area */}
@@ -50,7 +43,7 @@ function FinancialManagement() {
             activeSubTab={activeSubTab}
             onLoadTransactions={handleTransactionsLoaded}
             selectedCurrency={selectedCurrency}
-            setSelectedCurrency={setSelectedCurrency}
+            onSwitchSubTab={setActiveSubTab}
           />
         </div>
       </div>

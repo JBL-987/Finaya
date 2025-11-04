@@ -281,10 +281,10 @@ export default function Home({ login, register }) {
   ];
 
   return (
-    <main className="overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+    <main className="overflow-hidden bg-gray-900/95">
       {/* Hero Section */}
       <section className="min-h-screen relative flex flex-col justify-center items-center px-4 pt-20">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 z-0"></div>
+        <div className="absolute inset-0 bg-gray-900/95 z-0"></div>
 
         <div className="max-w-6xl z-20 text-center relative">
           <h1 className="hero-title text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 text-white leading-tight">

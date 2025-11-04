@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { CheckCircle, AlertTriangle, FileText, ArrowRight } from "lucide-react";
+import { formatCurrency } from "../../services/currencies";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 const ValidationAnimation = ({
   transaction,
@@ -7,6 +9,7 @@ const ValidationAnimation = ({
   onComplete,
   status = "pending", // pending, valid, warning, error
 }) => {
+  const { selectedCurrency } = useCurrency();
   const [stage, setStage] = useState(0);
   const [showCheckmark, setShowCheckmark] = useState(false);
 
@@ -62,12 +65,9 @@ const ValidationAnimation = ({
   };
 
   // Format amount for display
-  const formatAmount = (amount) => {
-    if (!amount) return "$0.00";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
+  const formatAmount = (transaction) => {
+    if (!transaction || transaction.amount === undefined || transaction.amount === null) return "N/A";
+    return formatCurrency(transaction.amount, transaction.currency || selectedCurrency);
   };
 
   return (
@@ -153,7 +153,7 @@ const ValidationAnimation = ({
                     : "text-green-400"
                 }`}
               >
-                {formatAmount(transaction?.amount)}
+                {formatAmount(transaction)}
               </span>
             </div>
             <div className="flex justify-between">

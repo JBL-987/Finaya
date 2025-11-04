@@ -110,6 +110,22 @@ async def get_investment_recommendations(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/investments/recommendations", response_model=Dict[str, Any])
+async def get_stored_investment_recommendations(
+    current_user: User = Depends(get_current_user)
+):
+    """Get stored investment recommendations for the current user"""
+    try:
+        # For now, return a message that recommendations need to be generated
+        # In a full implementation, this would retrieve from database/cache
+        return {
+            "success": True,
+            "message": "Use POST /advisor/investments/recommendations to generate new recommendations",
+            "recommendations": []
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/tax/strategy", response_model=Dict[str, Any])
 async def get_tax_strategy(
     request_data: Dict[str, Any],  # Changed from separate params to request_data for AI
@@ -150,5 +166,42 @@ async def generate_financial_plan(
             "success": True,
             "plan": plan
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/monte-carlo", response_model=Dict[str, Any])
+async def run_monte_carlo_simulation(
+    request_data: Dict[str, Any],
+    current_user: User = Depends(get_current_user)
+):
+    """Run Monte Carlo simulation for investment portfolio"""
+    try:
+        initial_investment = request_data.get("initial_investment", 0)
+        risk_level = request_data.get("risk_level", "moderate")
+        years = request_data.get("years", 10)
+        simulations = request_data.get("simulations", 1000)
+
+        if initial_investment <= 0:
+            raise HTTPException(status_code=400, detail="Initial investment must be greater than 0")
+
+        if years <= 0 or years > 50:
+            raise HTTPException(status_code=400, detail="Years must be between 1 and 50")
+
+        if simulations < 100 or simulations > 10000:
+            raise HTTPException(status_code=400, detail="Simulations must be between 100 and 10,000")
+
+        results = advisor_service.run_monte_carlo_simulation(
+            initial_investment=float(initial_investment),
+            risk_level=risk_level,
+            years=int(years),
+            simulations=int(simulations)
+        )
+
+        return {
+            "success": True,
+            "results": results
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

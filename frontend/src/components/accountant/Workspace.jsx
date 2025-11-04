@@ -16,6 +16,7 @@ import {
   Eye,
 } from "lucide-react";
 import FilePreview from "./FilePreview";
+import { Skeleton } from "../ui/Skeleton";
 
 const Workspace = ({
   files,
@@ -77,13 +78,58 @@ const Workspace = ({
       const newFiles = files.filter((file) => !allExistingFiles.has(file.name));
 
       if (newFiles.length > 0) {
-        setFolderStructure((prev) => ({
-          ...prev,
-          Uncategorized: {
-            ...prev["Uncategorized"],
-            files: [...prev["Uncategorized"].files, ...newFiles],
-          },
-        }));
+        // Process new files to generate PDF blobs for manual transactions
+        const processedFiles = newFiles.map(async (file) => {
+          if (file.isManualEntry && file.transactionData) {
+            try {
+              // Import the PDF generator
+              const { generateTransactionPDF } = await import("../../utils/pdfGenerator.js");
+
+              // Map backend transaction data to PDF generator format
+              const pdfData = {
+                date: file.transactionData.date,
+                transactionType: file.transactionData.type, // Map 'type' to 'transactionType'
+                amount: parseFloat(file.transactionData.amount || 0),
+                category: file.transactionData.category,
+                paymentMethod: file.transactionData.payment_method, // Map snake_case to camelCase
+                reference: file.transactionData.reference,
+                taxDeductible: !!file.transactionData.tax_deductible,
+                description: file.transactionData.description,
+                sourceFile: file.transactionData.source_file,
+              };
+
+              console.log("Generating PDF with data:", pdfData);
+
+              // Generate PDF blob from transaction data
+              const pdfBlob = generateTransactionPDF(pdfData);
+
+              console.log("Generated PDF blob:", pdfBlob, "Size:", pdfBlob.size);
+
+              // Return file with blob data
+              return {
+                ...file,
+                blob: pdfBlob,
+                type: 'application/pdf',
+                size: pdfBlob.size,
+              };
+            } catch (error) {
+              console.error("Error generating PDF for manual transaction:", error);
+              return file; // Return original file if PDF generation fails
+            }
+          }
+          return file;
+        });
+
+        // Wait for all PDF generations to complete
+        Promise.all(processedFiles).then((filesWithBlobs) => {
+          setFolderStructure((prev) => ({
+            ...prev,
+            Uncategorized: {
+              ...prev["Uncategorized"],
+              files: [...prev["Uncategorized"].files, ...filesWithBlobs],
+            },
+          }));
+        });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -345,6 +391,17 @@ const Workspace = ({
   // State for file preview
   const [previewFile, setPreviewFile] = useState(null);
 
+  // Loading state
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Set loading to false after initial render
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Handle right-click on folder or file
   const handleContextMenu = (e, type, item, folder = null) => {
     e.preventDefault();
@@ -453,13 +510,18 @@ const Workspace = ({
       // Show loading indicator
       setPreviewFile({ name: file.name, loading: true });
 
-      // We need to fetch the actual file data from the backend
-      // This is similar to the handleFileDownload function in App.jsx
+      // Check if file has blob data (like generated PDFs)
+      if (file.blob && file.blob instanceof Blob) {
+        console.log(`Opening preview for ${file.name} with blob data`);
+        setPreviewFile({
+          name: file.name,
+          blob: file.blob,
+          type: file.type || file.name.split(".").pop().toLowerCase(),
+        });
+        return;
+      }
 
-      // Since we don't have direct access to the actor here, we'll use the handleFileDownload function
-      // But we need to modify our approach to get the actual file data
-
-      // First, let's check the file extension
+      // Check the file extension
       const fileExtension = file.name.split(".").pop().toLowerCase();
 
       // List of file types we can preview
@@ -478,40 +540,13 @@ const Workspace = ({
       ];
 
       if (previewableTypes.includes(fileExtension)) {
-        // For these file types, we'll try to get the actual file data
-        // We'll use the handleFileDownload function but modify it to not trigger a download
-        console.log(`Fetching ${file.name} for preview...`);
+        console.log(`Opening preview for ${file.name} (${fileExtension}) - placeholder mode`);
 
-        handleFileDownload(file.name, true)
-          .then((fileBlob) => {
-            if (fileBlob) {
-              console.log(
-                `Successfully fetched blob for ${file.name}`,
-                fileBlob
-              );
-              setPreviewFile({
-                name: file.name,
-                blob: fileBlob,
-                type: fileExtension,
-              });
-            } else {
-              console.log(`No blob returned for ${file.name}`);
-              // Fallback to placeholder if we couldn't get the file data
-              setPreviewFile({
-                name: file.name,
-                isPreviewPlaceholder: true,
-                type: fileExtension,
-              });
-            }
-          })
-          .catch((error) => {
-            console.error("Error fetching file for preview:", error);
-            setPreviewFile({
-              name: file.name,
-              isPreviewPlaceholder: true,
-              type: fileExtension,
-            });
-          });
+        setPreviewFile({
+          name: file.name,
+          isPreviewPlaceholder: true,
+          type: fileExtension,
+        });
       } else {
         console.log(`File type ${fileExtension} is not previewable`);
         // For other file types, just show the placeholder
@@ -530,6 +565,75 @@ const Workspace = ({
   const closeFilePreview = () => {
     setPreviewFile(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between mb-4">
+          <Skeleton className="h-8 w-32 bg-gray-700" />
+          <Skeleton className="h-8 w-24 bg-gray-700" />
+        </div>
+
+        {/* Stats Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="bg-gray-900 border border-gray-700 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <Skeleton className="h-4 w-24 bg-gray-700" />
+                <Skeleton className="h-5 w-5 bg-gray-700" />
+              </div>
+              <Skeleton className="h-8 w-12 bg-gray-700" />
+            </div>
+          ))}
+        </div>
+
+        {/* File Explorer Skeleton */}
+        <div className="rounded-xl bg-gray-900 border border-gray-700 p-6">
+          <Skeleton className="h-6 w-32 mb-6 bg-gray-700" />
+
+          <div className="bg-gray-800 rounded-lg overflow-hidden">
+            <div className="border-b border-gray-700 px-4 py-2 flex items-center justify-between">
+              <Skeleton className="h-4 w-12 bg-gray-700" />
+              <Skeleton className="h-4 w-20 bg-gray-700" />
+            </div>
+
+            <div className="max-h-[500px] overflow-y-auto">
+              {Array.from({ length: 5 }).map((_, folderIndex) => (
+                <div key={folderIndex} className="border-b border-gray-700 last:border-0">
+                  <div className="flex items-center justify-between px-4 py-2">
+                    <div className="flex items-center">
+                      <Skeleton className="h-4 w-4 mr-2 bg-gray-700" />
+                      <Skeleton className="h-4 w-4 mr-2 bg-gray-700" />
+                      <Skeleton className="h-4 w-32 bg-gray-700" />
+                      <Skeleton className="h-3 w-12 ml-2 bg-gray-700" />
+                    </div>
+                    <Skeleton className="h-3 w-40 bg-gray-700" />
+                  </div>
+                  <div className="pl-8 bg-gray-800/50">
+                    {Array.from({ length: 2 }).map((_, fileIndex) => (
+                      <div key={fileIndex} className="flex items-center justify-between px-4 py-2">
+                        <div className="flex items-center">
+                          <Skeleton className="h-4 w-4 mr-2 bg-gray-700" />
+                          <Skeleton className="h-4 w-48 bg-gray-700" />
+                        </div>
+                        <div className="flex space-x-2">
+                          <Skeleton className="h-4 w-4 bg-gray-700" />
+                          <Skeleton className="h-4 w-4 bg-gray-700" />
+                          <Skeleton className="h-4 w-4 bg-gray-700" />
+                          <Skeleton className="h-4 w-4 bg-gray-700" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6" onClick={closeContextMenu}>
@@ -789,6 +893,7 @@ const Workspace = ({
           style={{
             top: `${contextMenu.y}px`,
             left: `${contextMenu.x}px`,
+
             transform: "translate(-50%, -50%)",
           }}
         >

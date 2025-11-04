@@ -43,6 +43,6 @@ class DatabaseError(FinayaException):
 
 
 class ExternalServiceError(FinayaException):
-    """External service errors (Supabase, Gemini, etc.)"""
+    """External service errors (Supabase, OpenRouter, etc.)"""
     def __init__(self, message: str = "External service error"):
         super().__init__(message, 502)

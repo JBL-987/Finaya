@@ -31,17 +31,15 @@ class AnalysisBase(BaseModel):
     analysis_type: str
 
 class AnalysisCreate(AnalysisBase):
-    data: Dict[str, Any]  # ✅ Lebih spesifik dengan type hint
-    qwen_analysis: Optional[Dict[str, Any]] = None  # ✅ UBAH: gemini_analysis → qwen_analysis
-
+    data: Dict[str, Any]
+    qwen_analysis: Optional[Dict[str, Any]] = None  
 class Analysis(AnalysisBase):
     id: int
     user_id: int
     data: Dict[str, Any]  # ✅ Tambahkan field data yang hilang
     created_at: datetime
     updated_at: datetime
-    qwen_analysis: Optional[Dict[str, Any]] = None  # ✅ UBAH: gemini_analysis → qwen_analysis
-
+    openrouter_analysis: Optional[Dict[str, Any]] = None  
     class Config:
         from_attributes = True
 
@@ -63,10 +61,14 @@ class TransactionBase(BaseModel):
     description: str
     amount: float
     category: str
-    type: str  # income or expense
+    type: str  # income, expense, transfer, asset purchase, liability, or equity
+    payment_method: Optional[str] = None
+    reference: Optional[str] = None
+    tax_deductible: Optional[bool] = False
+    source_file: Optional[str] = None
 
 class TransactionCreate(TransactionBase):
-    user_id: int
+    user_id: Optional[int] = None  # Set automatically from JWT token
 
 class Transaction(TransactionBase):
     id: int

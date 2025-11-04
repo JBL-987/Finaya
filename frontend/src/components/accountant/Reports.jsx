@@ -13,8 +13,14 @@ import {
   Eye,
   Trash2,
   MoveHorizontal,
+  Brain,
+  Sparkles,
 } from "lucide-react";
 import FilePreview from "./FilePreview";
+import { Skeleton } from "../ui/Skeleton";
+import { accountingAPI, reportsAPI } from "../../services/api";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { formatCurrency as formatCurrencyService } from "../../services/currencies";
 
 const Reports = ({
   transactions,
@@ -22,6 +28,7 @@ const Reports = ({
   handleFileDownload,
   handleFileDelete,
 }) => {
+  const { selectedCurrency } = useCurrency();
   const normalizedTransactions = Array.isArray(transactions)
     ? transactions
     : [];
@@ -29,6 +36,9 @@ const Reports = ({
 
   const [generatedReports, setGeneratedReports] = useState({});
   const [previewFile, setPreviewFile] = useState(null);
+  const [categorizingFiles, setCategorizingFiles] = useState(new Set());
+  const [categorizedFiles, setCategorizedFiles] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
 
   const [folderStructure, setFolderStructure] = useState({
     Financial_Reports: {
@@ -55,11 +65,15 @@ const Reports = ({
     }));
   }, [files]);
 
-  const formatCurrency = (value) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(value || 0);
+  // Set loading to false after initial render
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const formatCurrency = (value) => formatCurrencyService(value, selectedCurrency);
 
   const processFinancialData = () => {
     const income = normalizedTransactions.filter(
@@ -165,17 +179,57 @@ const Reports = ({
     const pdfUrl = URL.createObjectURL(pdfBlob);
     const fileName = `${reportType}_AI_Report_${new Date().toISOString().split('T')[0]}.pdf`;
 
+    // Save report to database based on type
+    try {
+      const reportData = {
+        report_type: reportType,
+        file_name: fileName,
+        content: {
+          financial_summary: financialData,
+          ai_analysis: aiContent,
+          transaction_count: normalizedTransactions.length,
+          generated_date: new Date().toISOString(),
+          report_metadata: {
+            total_income: financialData.totalIncome,
+            total_expenses: financialData.totalExpenses,
+            net_income: financialData.netIncome
+          }
+        },
+        pdf_data: await pdfBlob.arrayBuffer(), // Convert blob to ArrayBuffer for storage
+        status: 'generated'
+      };
+
+      // Determine which API to use based on report type
+      const isTaxReport = ['quarterlyTax', 'annualTax', 'salesTax'].includes(reportType);
+
+      if (isTaxReport) {
+        reportData.tax_period = reportType === 'quarterlyTax' ? 'quarterly' :
+                               reportType === 'annualTax' ? 'annual' : 'monthly';
+        await reportsAPI.createTaxReport(reportData);
+      } else {
+        await reportsAPI.createFinancialReport(reportData);
+      }
+
+      console.log('Report saved to database successfully');
+    } catch (error) {
+      console.error('Error saving report to database:', error);
+    }
+
     setGeneratedReports((prev) => ({
       ...prev,
       [reportType]: { name: fileName, url: pdfUrl, blob: pdfBlob },
     }));
 
+    // Determine target folder based on report type
+    const isTaxReport = ['quarterlyTax', 'annualTax', 'salesTax'].includes(reportType);
+    const targetFolder = isTaxReport ? 'Tax_Reports' : 'Financial_Reports';
+
     setFolderStructure((prev) => ({
       ...prev,
-      Financial_Reports: {
-        ...prev.Financial_Reports,
+      [targetFolder]: {
+        ...prev[targetFolder],
         files: [
-          ...prev.Financial_Reports.files.filter((f) => f.name !== fileName),
+          ...prev[targetFolder].files.filter((f) => f.name !== fileName),
           { name: fileName, url: pdfUrl, blob: pdfBlob, generated: true },
         ],
       },
@@ -217,6 +271,167 @@ const Reports = ({
       });
     }
   };
+
+  // AI Document Categorization
+  const categorizeDocument = async (file) => {
+    if (categorizingFiles.has(file.name)) return;
+
+    setCategorizingFiles(prev => new Set(prev).add(file.name));
+
+    try {
+      // Get file content for AI analysis
+      const blob = await handleFileDownload(file.name, true);
+      const fileExtension = file.name.split(".").pop().toLowerCase();
+
+      // Convert blob to text (for supported formats)
+      let documentContent = "";
+      if (fileExtension === "txt") {
+        documentContent = await blob.text();
+      } else if (fileExtension === "csv") {
+        documentContent = await blob.text();
+      } else {
+        // For binary files, just use filename and extension
+        documentContent = `File: ${file.name}, Type: ${fileExtension}`;
+      }
+
+      // Call AI categorization API using reportsAPI
+      const result = await reportsAPI.categorizeDocument({
+        document_name: file.name,
+        document_content: documentContent.substring(0, 2000), // Limit content
+        document_type: fileExtension,
+      });
+
+      setCategorizedFiles(prev => ({
+        ...prev,
+        [file.name]: result
+      }));
+
+      // Auto-move file to appropriate folder based on categorization
+      if (result.category === "financial_report") {
+        moveFileToFolder(file.name, "Financial_Reports");
+      } else if (result.category === "tax_report") {
+        moveFileToFolder(file.name, "Tax_Reports");
+      }
+    } catch (error) {
+      console.error("Document categorization failed:", error);
+    } finally {
+      setCategorizingFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(file.name);
+        return newSet;
+      });
+    }
+  };
+
+  const moveFileToFolder = (fileName, targetFolder) => {
+    setFolderStructure(prev => {
+      // Find source folder
+      let sourceFolder = null;
+      let fileToMove = null;
+
+      Object.entries(prev).forEach(([folderName, folder]) => {
+        const file = folder.files.find(f => f.name === fileName);
+        if (file) {
+          sourceFolder = folderName;
+          fileToMove = file;
+        }
+      });
+
+      if (!sourceFolder || !fileToMove) return prev;
+
+      // Remove from source and add to target
+      const updated = { ...prev };
+      updated[sourceFolder] = {
+        ...updated[sourceFolder],
+        files: updated[sourceFolder].files.filter(f => f.name !== fileName)
+      };
+      updated[targetFolder] = {
+        ...updated[targetFolder],
+        files: [...updated[targetFolder].files, fileToMove]
+      };
+
+      return updated;
+    });
+  };
+
+  const getFileIcon = (fileName) => {
+    const extension = fileName.split(".").pop().toLowerCase();
+    const categorization = categorizedFiles[fileName];
+
+    if (categorization) {
+      if (categorization.category === "financial_report") {
+        return <BarChart3 size={16} className="text-blue-400" />;
+      } else if (categorization.category === "tax_report") {
+        return <Receipt size={16} className="text-green-400" />;
+      }
+    }
+
+    if (["pdf", "doc", "docx", "txt"].includes(extension)) {
+      return <FileText size={16} className="text-blue-400" />;
+    } else if (["xls", "xlsx", "csv"].includes(extension)) {
+      return <BarChart3 size={16} className="text-green-400" />;
+    } else {
+      return <File size={16} className="text-gray-400" />;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 text-white">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between mb-4">
+          <Skeleton className="h-8 w-48 bg-gray-700" />
+          <Skeleton className="h-4 w-32 bg-gray-700" />
+        </div>
+
+        {/* Buttons Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex flex-col items-center">
+              <Skeleton className="h-6 w-6 mb-2 bg-gray-600" />
+              <Skeleton className="h-4 w-20 bg-gray-600" />
+            </div>
+          ))}
+        </div>
+
+        {/* File Explorer Skeleton */}
+        <div className="bg-gray-900 rounded-lg p-6 shadow-lg">
+          <Skeleton className="h-6 w-32 mb-4 bg-gray-700" />
+          <div className="bg-gray-800 rounded-lg overflow-hidden">
+            {Array.from({ length: 3 }).map((_, folderIndex) => (
+              <div key={folderIndex} className="border-b border-gray-700 last:border-0">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center">
+                    <Skeleton className="h-4 w-4 mr-2 bg-gray-600" />
+                    <Skeleton className="h-4 w-4 mr-2 bg-gray-600" />
+                    <Skeleton className="h-4 w-32 bg-gray-600" />
+                    <Skeleton className="h-3 w-12 ml-2 bg-gray-600" />
+                  </div>
+                  <Skeleton className="h-3 w-40 bg-gray-600" />
+                </div>
+                <div className="bg-gray-800/50 pl-8">
+                  {Array.from({ length: 2 }).map((_, fileIndex) => (
+                    <div key={fileIndex} className="flex items-center justify-between px-4 py-2">
+                      <div className="flex items-center">
+                        <Skeleton className="h-4 w-4 mr-2 bg-gray-600" />
+                        <Skeleton className="h-4 w-48 bg-gray-600" />
+                      </div>
+                      <div className="flex space-x-2">
+                        <Skeleton className="h-4 w-4 bg-gray-600" />
+                        <Skeleton className="h-4 w-4 bg-gray-600" />
+                        <Skeleton className="h-4 w-4 bg-gray-600" />
+                        <Skeleton className="h-4 w-4 bg-gray-600" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 text-white">
@@ -290,10 +505,33 @@ const Reports = ({
                         className="flex items-center justify-between px-4 py-2 hover:bg-gray-700"
                       >
                         <div className="flex items-center text-white">
-                          <FileText size={16} className="mr-2 text-white" />
-                          <span>{file.name}</span>
+                          {getFileIcon(file.name)}
+                          <span className="ml-2">{file.name}</span>
+                          {categorizedFiles[file.name] && (
+                            <span className="ml-2 text-xs px-2 py-1 bg-blue-900/50 text-blue-300 rounded-full">
+                              {categorizedFiles[file.name].subcategory || categorizedFiles[file.name].category}
+                            </span>
+                          )}
+                          {categorizingFiles.has(file.name) && (
+                            <span className="ml-2 text-xs px-2 py-1 bg-yellow-900/50 text-yellow-300 rounded-full flex items-center">
+                              <Brain size={12} className="mr-1" />
+                              Analyzing...
+                            </span>
+                          )}
                         </div>
                         <div className="flex space-x-2">
+                          {!categorizedFiles[file.name] && !categorizingFiles.has(file.name) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                categorizeDocument(file);
+                              }}
+                              className="text-purple-400 hover:text-purple-300"
+                              title="AI Categorize"
+                            >
+                              <Brain size={16} />
+                            </button>
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

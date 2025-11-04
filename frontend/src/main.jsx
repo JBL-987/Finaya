@@ -13,6 +13,7 @@ import Home from "./pages/Home";
 import UserDashboard from "./pages/UserDashboard";
 import FinancialManagement from "./pages/FinancialManagement";
 import { authAPI } from "./services/api";
+import { CurrencyProvider } from "./contexts/CurrencyContext";
 import "../index.css";
 
 function Main() {
@@ -165,6 +166,8 @@ function Main() {
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <Main />
+    <CurrencyProvider>
+      <Main />
+    </CurrencyProvider>
   </React.StrictMode>
 );

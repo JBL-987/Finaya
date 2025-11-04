@@ -9,16 +9,14 @@ class AnalysisBase(BaseModel):
     analysis_type: str
 
 class AnalysisCreate(AnalysisBase):
-    data: Dict[str, Any]  # ✅ Lebih spesifik dengan type hint
-    qwen_analysis: Optional[Dict[str, Any]] = None  # ✅ UBAH: gemini_analysis → qwen_analysis
-
+    data: Dict[str, Any]
+    qwen_analysis: Optional[Dict[str, Any]] = None  
 class Analysis(AnalysisBase):
     id: int
     user_id: int
     data: Dict[str, Any]  # ✅ Tambahkan field data yang hilang
     created_at: datetime
     updated_at: datetime
-    qwen_analysis: Optional[Dict[str, Any]] = None  # ✅ UBAH: gemini_analysis → qwen_analysis
-
+    openrouter_analysis: Optional[Dict[str, Any]] = None  
     class Config:
         from_attributes = True
