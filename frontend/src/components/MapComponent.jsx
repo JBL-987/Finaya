@@ -72,9 +72,37 @@ const MapComponent = ({ onLocationSelect, selectedLocation, onMapReady, building
   const mapInstanceRef = useRef(null);
   const circleRef = useRef(null);
 
+  // Get user's current location (non-blocking)
+  const getUserLocation = () => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation is not supported by this browser'));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.warn('Geolocation error:', error);
+          reject(error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutes
+        }
+      );
+    });
+  };
+
   // Initialize map
   useEffect(() => {
-    const initMap = async () => {
+    const initMap = () => {
       // Prevent multiple initializations
       if (mapInstanceRef.current) {
         console.log('Map already initialized, skipping...');
@@ -114,16 +142,31 @@ const MapComponent = ({ onLocationSelect, selectedLocation, onMapReady, building
         // Get dynamic map width
         const mapWidthPx = container.offsetWidth || 800; // Fallback to 800 if container not ready
 
-        const zoomLevel = calculateZoomFromRadius(-6.2088, parseFloat(buildingWidth) || 0, mapWidthPx);
+        // Start with Jakarta as default location
+        const defaultLocation = { lat: -6.2088, lng: 106.8456 }; // Jakarta coordinates
 
-        // Create map with Jakarta as center
+        const zoomLevel = calculateZoomFromRadius(defaultLocation.lat, parseFloat(buildingWidth) || 0, mapWidthPx);
+
+        // Create map with default location as center
         const map = L.map(container, {
-          center: [-6.2088, 106.8456], // Jakarta coordinates
+          center: [defaultLocation.lat, defaultLocation.lng],
           zoom: zoomLevel,
           zoomControl: true,
           scrollWheelZoom: true,
           dragging: true
         });
+
+        // Try to get user's location asynchronously (non-blocking)
+        console.log('Attempting to get user location...');
+        getUserLocation()
+          .then((userLocation) => {
+            console.log('User location obtained:', userLocation);
+            // Update map center to user's location
+            map.setView([userLocation.lat, userLocation.lng], zoomLevel);
+          })
+          .catch((error) => {
+            console.log('Using default location (Jakarta) due to geolocation error:', error.message);
+          });
 
         console.log('Adding map layer...');
 
@@ -333,6 +376,12 @@ const MapComponent = ({ onLocationSelect, selectedLocation, onMapReady, building
           </div>
         </div>
       )}
+      {/* Location Status */}
+      <div className="absolute top-4 right-4 z-10 pointer-events-none">
+        <div className="bg-white/90 text-gray-900 px-3 py-2 rounded-lg text-sm border border-gray-300 shadow-sm">
+          📍 Map centered on your location
+        </div>
+      </div>
       {/* Loading overlay */}
       {!mapLoaded && (
         <div className="absolute inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-10">
