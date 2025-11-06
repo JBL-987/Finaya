@@ -72,7 +72,7 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
                 to="/app"
                 className="text-white hover:text-yellow-400 transition-colors font-semibold text-sm lg:text-base py-2"
               >
-                Analysis
+                Location Analysis
               </Link>
               <Link
                 to="/financial-management"
@@ -148,7 +148,7 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
                     onClick={() => setMobileMenuOpen(false)}
                     className="text-white hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-semibold"
                   >
-                    Analysis
+                    Location Analysis
                   </Link>
                   <Link
                     to="/financial-management"

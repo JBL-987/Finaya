@@ -26,6 +26,16 @@ const redMarkerIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
+// Create a custom blue marker icon for user's current location
+const blueMarkerIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 /**
  * Calculates the appropriate zoom level for a map to display a given radius around a point.
  * Uses the Web Mercator projection formula to determine zoom level.
@@ -163,6 +173,12 @@ const MapComponent = ({ onLocationSelect, selectedLocation, onMapReady, building
             console.log('User location obtained:', userLocation);
             // Update map center to user's location
             map.setView([userLocation.lat, userLocation.lng], zoomLevel);
+
+            // Add red marker for user's current location
+            L.marker([userLocation.lat, userLocation.lng], { icon: redMarkerIcon })
+              .addTo(map)
+              .bindPopup(`📍 Your Current Location<br/>Lat: ${userLocation.lat.toFixed(6)}<br/>Lng: ${userLocation.lng.toFixed(6)}`)
+              .openPopup();
           })
           .catch((error) => {
             console.log('Using default location (Jakarta) due to geolocation error:', error.message);
