@@ -55,10 +55,10 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
                 Coverage
               </a>
               <a
-                href="#testimonials"
+                href="#huawei-services"
                 className="text-gray-300 hover:text-yellow-400 transition-colors font-medium text-sm lg:text-base py-2"
               >
-                Testimonials
+                Huawei Services
               </a>
             </>
           ) : (
@@ -125,11 +125,11 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
                     Coverage
                   </a>
                   <a
-                    href="#testimonials"
+                    href="#huawei-services"
                     className="text-gray-300 hover:text-yellow-400 transition-colors py-3 px-4 rounded-lg hover:bg-gray-800 font-medium"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Testimonials
+                    Huawei Services
                   </a>
                 </>
               ) : (

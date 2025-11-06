@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  MapPin,
   BarChart3,
   Brain,
   Target,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import * as flags from 'country-flag-icons/react/3x2';
 import AuthModal from "../components/AuthModal";
+import Marquee from "react-fast-marquee";
 
 export default function Home({ login, register }) {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -136,7 +136,7 @@ export default function Home({ login, register }) {
             duration: 0.8,
             stagger: 0.1,
             scrollTrigger: {
-              trigger: '#testimonials',
+              trigger: '#huawei-services',
               start: 'top 80%',
               end: 'bottom 20%',
               toggleActions: 'play none none reverse'
@@ -259,10 +259,22 @@ export default function Home({ login, register }) {
     { Flag: flags.SG, name: 'Singapore' },
     { Flag: flags.JP, name: 'Japan' },
     { Flag: flags.KR, name: 'South Korea' },
-    { Flag: flags.AU, name: 'Australia' }
+    { Flag: flags.AU, name: 'Australia' },
+    { Flag: flags.BN, name: 'Brunei' },
+    { Flag: flags.KH, name: 'Cambodia' },
+    { Flag: flags.CN, name: 'China' },
+    { Flag: flags.HK, name: 'Hong Kong' },
+    { Flag: flags.IN, name: 'India' },
+    { Flag: flags.LA, name: 'Laos' },
+    { Flag: flags.MO, name: 'Macau' },
+    { Flag: flags.MN, name: 'Mongolia' },
+    { Flag: flags.MM, name: 'Myanmar' },
+    { Flag: flags.NZ, name: 'New Zealand' },
+    { Flag: flags.TW, name: 'Taiwan' },
+    { Flag: flags.TL, name: 'Timor-Leste' },
   ];
 
-  const testimonials = [
+  const huaweiServices = [
     {
       quote: "Finaya transformed our accounting process completely! The AI-powered transaction categorization and automated validation saved us 15 hours per week while ensuring 100% accuracy in our financial reporting.",
       author: "Sarah Chen, CFO at TechStart Inc.",
@@ -312,23 +324,6 @@ export default function Home({ login, register }) {
               Learn More
               <ArrowRight className="h-5 w-5" />
             </a>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
-            {stats.map((stat, index) => (
-              <div key={index} className="stat-item text-center p-6 bg-gray-800 rounded-xl border border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 hover:border-yellow-400">
-                <div className="flex justify-center mb-4">
-                  <div className="p-3 bg-yellow-100 rounded-full">
-                    {React.cloneElement(stat.icon, { className: "h-6 w-6 text-yellow-600" })}
-                  </div>
-                </div>
-                <div className="text-2xl md:text-3xl font-bold text-white mb-2">
-                  {stat.number}
-                </div>
-                <div className="text-sm text-gray-300 font-medium">{stat.label}</div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
@@ -419,9 +414,6 @@ export default function Home({ login, register }) {
                       {React.cloneElement(item.icon, { className: "w-full h-full" })}
                     </div>
                   </div>
-                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg">
-                    {item.step}
-                  </div>
                 </div>
                 <h4 className="text-xl font-semibold mb-3 text-white">{item.title}</h4>
                 <p className="text-gray-300 leading-relaxed text-sm">{item.desc}</p>
@@ -432,53 +424,92 @@ export default function Home({ login, register }) {
       </section>
 
       {/* Countries Section */}
-      <section id="countries" className="py-20 px-4 bg-gray-900">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
+      <section id="countries" className="py-20 bg-gray-900 px-0">
+        <div className="w-full mx-auto">
+          <div className="text-center mb-16 px-4">
             <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
               Built for Asia-Pacific
             </h2>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Supporting businesses across 9 countries and counting
+              Supporting businesses across APAC countries and counting
             </p>
           </div>
-
-          <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-4 max-w-6xl mx-auto">
+          {/* Horizontal Infinite Marquee Countries FULL WIDTH, NO GAP */}
+          <Marquee gradient={false} speed={40} pauseOnHover className="!w-full">
             {countries.map((country, index) => (
-              <div key={index} className="country-card text-center p-4 bg-gray-800 rounded-xl border border-gray-700 hover:border-yellow-400 hover:shadow-lg transition-all duration-300 hover:scale-105 group">
+              <div key={index} className="country-card text-center p-4 bg-gray-800 rounded-xl border border-gray-700 hover:border-yellow-400 hover:shadow-lg transition-all duration-300 hover:scale-105 group w-36 flex-shrink-0 mx-4 my-4 first:ml-0 last:mr-0">
                 <div className="mb-3 flex justify-center items-center h-12">
                   <country.Flag className="w-16 h-12 object-cover rounded shadow-sm group-hover:scale-110 transition-transform duration-300" />
                 </div>
                 <div className="text-sm font-medium text-gray-300">{country.name}</div>
               </div>
             ))}
-          </div>
+          </Marquee>
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section id="testimonials" className="py-20 px-4 bg-gray-800">
+      {/* Huawei Services Section */}
+      <section id="huawei-services" className="py-20 px-4 bg-gray-800">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-4xl md:text-5xl font-bold mb-12 text-center text-white">
-            User Success Stories
+            Huawei Cloud Services
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
+            {/* List of Huawei Cloud Services with placeholder icons */}
+            {[
+              {
+                name: "API Gateway (APIG)",
+                desc: "Manage and expose your APIs securely and at scale.",
+                icon: <ArrowRight className="h-12 w-12 text-yellow-400 mx-auto mb-4" />,
+              },
+              {
+                name: "Cloud Container Engine (CCE)",
+                desc: "Powerful and easy Kubernetes orchestration services.",
+                icon: <Zap className="h-12 w-12 text-yellow-400 mx-auto mb-4" />,
+              },
+              {
+                name: "Relational Database Service (RDS)",
+                desc: "Reliable, high-performance, and secure relational database.",
+                icon: <BarChart3 className="h-12 w-12 text-yellow-400 mx-auto mb-4" />,
+              },
+              {
+                name: "Distributed Cache Service (Redis)",
+                desc: "High-speed caching solution to accelerate app performance.",
+                icon: <Star className="h-12 w-12 text-yellow-400 mx-auto mb-4" />,
+              },
+              {
+                name: "Object Storage Service (OBS)",
+                desc: "Massively scalable object storage for files and documents.",
+                icon: <Brain className="h-12 w-12 text-yellow-400 mx-auto mb-4" />,
+              },
+              {
+                name: "OCR & NLP AI Services",
+                desc: "Advanced AI for document recognition and natural language processing. Ready-to-use AI!",
+                icon: <Calculator className="h-12 w-12 text-yellow-400 mx-auto mb-4" />,
+              },
+              {
+                name: "Image Search (IS)",
+                desc: "Automatically search and recognize images using AI.",
+                icon: <Target className="h-12 w-12 text-yellow-400 mx-auto mb-4" />,
+              },
+              {
+                name: "Log Analysis",
+                desc: "Comprehensive log analysis for security and monitoring.",
+                icon: <TrendingUp className="h-12 w-12 text-yellow-400 mx-auto mb-4" />,
+              },
+              {
+                name: "Report Building Service (RBS)",
+                desc: "Automatically generate financial and business reports.",
+                icon: <BarChart3 className="h-12 w-12 text-yellow-400 mx-auto mb-4" />,
+              },
+            ].map((service, idx) => (
               <div
-                key={index}
-                className="testimonial-card bg-gray-900 p-8 rounded-2xl border border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300 hover:scale-105 hover:border-yellow-400"
+                key={idx}
+                className="testimonial-card bg-gray-900 p-8 rounded-2xl border border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300 hover:scale-105 hover:border-yellow-400 text-center"
               >
-                <div className="flex mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-gray-300 mb-6 italic text-lg leading-relaxed">
-                  "{testimonial.quote}"
-                </p>
-                <p className="font-semibold text-yellow-400">
-                  {testimonial.author}
-                </p>
+                <div>{service.icon}</div>
+                <h3 className="text-xl font-bold text-white mb-2">{service.name}</h3>
+                <p className="text-gray-300 text-base mb-2">{service.desc}</p>
               </div>
             ))}
           </div>
@@ -493,23 +524,6 @@ export default function Home({ login, register }) {
           </h2>
           <p className="text-xl text-yellow-100 mb-8 max-w-2xl mx-auto">
             Join thousands of MSMEs achieving financial excellence with intelligent automation and strategic insights
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="bg-white text-yellow-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg"
-            >
-              Start Free Trial
-            </button>
-            <a
-              href="#features"
-              className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-yellow-600 transition-colors"
-            >
-              Explore Features
-            </a>
-          </div>
-          <p className="text-sm text-yellow-100">
-            No credit card required • 14-day free trial • Cancel anytime
           </p>
         </div>
       </section>
