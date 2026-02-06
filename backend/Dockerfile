@@ -5,10 +5,11 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y gcc && rm -rf /var/lib/apt/lists/*
 
 # Copy EVERYTHING first
-COPY . .
+COPY requirements.txt .
 
 # Install dependencies (requirements.txt is now inside /app)
 RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
 
 # Expose port
 EXPOSE 8000
