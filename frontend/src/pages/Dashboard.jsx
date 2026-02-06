@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Box, Lock, Search, Settings, Sparkles, MapPin, TrendingUp, History, User } from "lucide-react";
 import { GlowingEffect } from "../components/ui/GlowingEffect";
-import { cn } from "../lib/utils";
+import { cn } from "@/lib/utils";
 import { analysisAPI, authAPI } from "../services/api";
 import { firebaseAuth } from "../services/firebase";
 import { Link } from "react-router-dom";
