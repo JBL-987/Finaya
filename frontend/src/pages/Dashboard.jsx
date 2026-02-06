@@ -52,7 +52,6 @@ const Dashboard = () => {
         totalAnalyses: 0,
         recentAnalyses: [],
         topCategory: "N/A",
-        topCategory: "N/A",
         userName: "User",
         userPhoto: null,
         chartData: []
