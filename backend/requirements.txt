@@ -14,3 +14,4 @@ pandas==2.0.3
 scipy==1.11.3
 google-generativeai==0.3.2
 google-genai
+motor
