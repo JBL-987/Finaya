@@ -4,5 +4,3 @@ venv/
 .env
 .git
 .pytest_cache
-
-finaya-cf555-firebase-adminsdk-fbsvc-8d6a843225.json
