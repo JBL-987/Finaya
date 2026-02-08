@@ -150,6 +150,31 @@ export const analysisAPI = {
 
   // Calculate complete analysis (with auto-save)
   calculate: async (location, businessParams, screenshotBase64, screenshotMetadata) => {
+    // Check for guest mode
+    const token = localStorage.getItem('access_token');
+    if (token === 'guest-token') {
+       console.log('Guest mode: Simulating calculation');
+       await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate delay
+       
+       return {
+         analysis_id: `guest_calc_${Date.now()}`,
+         metrics: {
+           monthlyRevenue: 15000000 + Math.random() * 5000000,
+           tppd: Math.floor(50 + Math.random() * 30),
+           areaData: { areaSqKm: 0.5 },
+           estimatedVisitors: Math.floor(100 + Math.random() * 50),
+           profitMargin: 0.25
+         },
+         area_distribution: {
+            residential: 0.4,
+            commercial: 0.3,
+            park: 0.1,
+            road: 0.2
+         },
+         location_name: "Guest Demo Location"
+       };
+    }
+
     const response = await api.post('/analysis/calculate', {
       location,
       business_params: businessParams,
@@ -161,6 +186,32 @@ export const analysisAPI = {
 
   // Analyze only (without saving to database)
   analyze: async (location, businessParams, screenshotBase64, screenshotMetadata) => {
+    // Check for guest mode
+    const token = localStorage.getItem('access_token');
+    if (token === 'guest-token') {
+       console.log('Guest mode: Simulating analysis');
+       await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate delay
+       
+       return {
+         analysis_id: `guest_analyze_${Date.now()}`,
+         metrics: {
+           monthlyRevenue: 12000000 + Math.random() * 8000000,
+           tppd: Math.floor(40 + Math.random() * 40),
+           areaData: { areaSqKm: 0.8 },
+           estimatedVisitors: Math.floor(80 + Math.random() * 60),
+           profitMargin: 0.20 + Math.random() * 0.1
+         },
+         area_distribution: {
+            residential: 0.35,
+            commercial: 0.25,
+            park: 0.15,
+            road: 0.25
+         },
+         location_name: "Guest Demo Location",
+         raw_response: "Simulated AI Analysis for Guest Mode"
+       };
+    }
+
     const response = await api.post('/analysis/analyze', {
       location,
       business_params: businessParams,
