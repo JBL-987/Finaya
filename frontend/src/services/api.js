@@ -1,11 +1,12 @@
 import axios from 'axios';
+import logger from '../utils/logger';
 
 const getBaseUrl = () => {
   let url = import.meta.env.VITE_API_BASE_URL || 'https://finaya-production-f6f2.up.railway.app/api/v1';
   
   // Check if we are in production (Vercel) but using localhost
   if (import.meta.env.PROD && url.includes('localhost')) {
-    console.error('CRITICAL: API URL is pointing to localhost in production!', url);
+    logger.error('CRITICAL: API URL is pointing to localhost in production!', url);
     // Alert the user so they know why it's failing
     if (typeof window !== 'undefined') {
       setTimeout(() => {
@@ -44,7 +45,7 @@ api.interceptors.request.use(
         return config;
       }
     } catch (error) {
-      console.log('No Firebase user, checking localStorage token');
+      logger.log('No Firebase user, checking localStorage token');
     }
     
     // Fallback to localStorage token (for backward compatibility)
@@ -119,7 +120,7 @@ export const authAPI = {
       const response = await api.get('/auth/me');
       return response.data;
     } catch (error) {
-      console.error('Failed to get current user:', error);
+      logger.error('Failed to get current user:', error);
       return null;
     }
   },
@@ -129,7 +130,7 @@ export const authAPI = {
       const response = await api.get('/auth/currency-preferences');
       return response.data;
     } catch (error) {
-      console.error('Failed to get currency preferences:', error);
+      logger.error('Failed to get currency preferences:', error);
       return { success: false, preferences: {} };
     }
   },
@@ -139,7 +140,7 @@ export const authAPI = {
       const response = await api.put('/auth/currency-preferences', preferences);
       return response.data;
     } catch (error) {
-      console.error('Failed to update currency preferences:', error);
+      logger.error('Failed to update currency preferences:', error);
       return { success: false };
     }
   },
@@ -184,7 +185,7 @@ export const analysisAPI = {
     // Check for guest mode
     const token = localStorage.getItem('access_token');
     if (token === 'guest-token') {
-      console.log('Guest mode: Saving to localStorage');
+      logger.log('Guest mode: Saving to localStorage');
       const savedAnalyses = JSON.parse(localStorage.getItem('guest_analyses') || '[]');
       
       const newAnalysis = {
@@ -210,7 +211,7 @@ export const analysisAPI = {
     // Check for guest mode
     const token = localStorage.getItem('access_token');
     if (token === 'guest-token') {
-       console.log('Guest mode: Fetching from localStorage');
+       logger.log('Guest mode: Fetching from localStorage');
        const savedAnalyses = JSON.parse(localStorage.getItem('guest_analyses') || '[]');
        
        // Sort by date desc
@@ -372,11 +373,11 @@ export const placesAPI = {
         }).filter(item => item.lat && item.lng);
 
       } catch (error) {
-        console.warn(`Overpass attempt ${attempt + 1}/${maxRetries} failed:`, error.message);
+        logger.warn(`Overpass attempt ${attempt + 1}/${maxRetries} failed:`, error.message);
         
         // If this was the last attempt, give up gracefully
         if (attempt === maxRetries - 1) {
-          console.error('All Overpass retries failed. Continuing without competitor data.');
+          logger.error('All Overpass retries failed. Continuing without competitor data.');
           return []; // Return empty instead of throwing
         }
         

@@ -1,4 +1,5 @@
 import html2canvas from 'html2canvas';
+import logger from '../utils/logger';
 
 /**
  * Captures a screenshot of the map at a specific location
@@ -93,7 +94,7 @@ export async function captureMapScreenshot(map, lat, lng, zoomLevel = null) {
     };
     
   } catch (error) {
-    console.error('Error capturing map screenshot:', error);
+    logger.error('Error capturing map screenshot:', error);
     throw new Error(`Failed to capture map screenshot: ${error.message}`);
   }
 }
@@ -172,7 +173,7 @@ export function storeScreenshotData(locationKey, screenshotData) {
     
     return true;
   } catch (error) {
-    console.error('Error storing screenshot data:', error);
+    logger.error('Error storing screenshot data:', error);
     return false;
   }
 }
@@ -200,7 +201,7 @@ export function getStoredScreenshotData(locationKey) {
     
     return data;
   } catch (error) {
-    console.error('Error retrieving screenshot data:', error);
+    logger.error('Error retrieving screenshot data:', error);
     return null;
   }
 }

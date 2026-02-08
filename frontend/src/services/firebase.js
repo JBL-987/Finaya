@@ -9,6 +9,7 @@ import {
   signInWithPopup,
   signInWithRedirect
 } from 'firebase/auth';
+import logger from '../utils/logger';
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -25,7 +26,7 @@ const firebaseConfig = {
 
 // Validate Firebase configuration before initialization
 if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId) {
-  console.error('Firebase configuration is missing required fields:', firebaseConfig);
+  logger.error('Firebase configuration is missing required fields:', firebaseConfig);
   throw new Error('Firebase configuration is incomplete. Please check your environment variables.');
 }
 
@@ -44,10 +45,10 @@ try {
     prompt: 'select_account'  // Always show account selection
   });
   
-  console.log('Firebase initialized successfully');
+  logger.log('Firebase initialized successfully');
 } catch (error) {
-  console.error('Firebase initialization failed:', error);
-  console.log('Firebase config used:', firebaseConfig);
+  logger.error('Firebase initialization failed:', error);
+  logger.log('Firebase config used:', firebaseConfig);
   throw error;
 }
 
@@ -60,7 +61,7 @@ export const firebaseAuth = {
       const idToken = await userCredential.user.getIdToken();
       return { user: userCredential.user, idToken };
     } catch (error) {
-      console.error('Firebase sign in error:', error);
+      logger.error('Firebase sign in error:', error);
       throw error;
     }
   },
@@ -72,7 +73,7 @@ export const firebaseAuth = {
       const idToken = await userCredential.user.getIdToken();
       return { user: userCredential.user, idToken };
     } catch (error) {
-      console.error('Firebase sign up error:', error);
+      logger.error('Firebase sign up error:', error);
       throw error;
     }
   },
@@ -85,7 +86,7 @@ export const firebaseAuth = {
       const idToken = await result.user.getIdToken();
       return { user: result.user, idToken };
     } catch (error) {
-      console.error('Google sign in error:', error);
+      logger.error('Google sign in error:', error);
       
       // If popup fails due to CORS, blocking, or extension conflict (Keplr)
       if (error.code === 'auth/popup-blocked' || 
@@ -94,7 +95,7 @@ export const firebaseAuth = {
           error.message?.includes('postMessage') ||
           error.message?.includes('Extension')) {
             
-        console.log('Popup failed (likely extension conflict), switching to redirect method...');
+        logger.log('Popup failed (likely extension conflict), switching to redirect method...');
         await signInWithRedirect(auth, googleProvider);
         // Return non-resolving promise as page will redirect
         return new Promise(() => {});
@@ -109,7 +110,7 @@ export const firebaseAuth = {
     try {
       await signOut(auth);
     } catch (error) {
-      console.error('Firebase sign out error:', error);
+      logger.error('Firebase sign out error:', error);
       throw error;
     }
   },
