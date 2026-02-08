@@ -62,9 +62,9 @@ async def _web_search_density(location_name: str) -> str:
     Helper to search for density data to ground Gemini's visual estimate.
     """
     try:
-        from app.services.agent_service import finaya_agent
+        from app.services.agent_service import get_finaya_agent
         query = f"population density statistics demographics {location_name} site:citypopulation.de OR site:bps.go.id OR site:wikipedia.org"
-        return await finaya_agent._web_search(query)
+        return await get_finaya_agent()._web_search(query)
     except:
         return "No external density data available."
 

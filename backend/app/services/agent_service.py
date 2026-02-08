@@ -316,5 +316,15 @@ class FinayaAgent:
         except:
             return []
 
-# Singleton instance
-finaya_agent = FinayaAgent()
+# Lazy singleton instance (not initialized at import time)
+finaya_agent = None
+
+def get_finaya_agent() -> FinayaAgent:
+    """
+    Lazy initialization of FinayaAgent to avoid blocking port binding during Railway startup.
+    """
+    global finaya_agent
+    if finaya_agent is None:
+        finaya_agent = FinayaAgent()
+    return finaya_agent
+

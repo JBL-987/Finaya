@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
-from ...services.agent_service import finaya_agent
+from ...services.agent_service import get_finaya_agent
 from ...schemas.schemas import User
 from .auth import get_current_user
 import json
@@ -42,7 +42,7 @@ async def get_agent_advice(
     Get strategic business advice from the Finaya AI Agent based on analysis context.
     """
     try:
-        advice = await finaya_agent.run_advisor_task(
+        advice = await get_finaya_agent().run_advisor_task(
             request.query, 
             request.context_data, 
             request.history, 
@@ -64,7 +64,7 @@ async def explore_nearby(
     Autonomous exploration suggestion for nearby potential high-yield spots.
     """
     try:
-        suggestions = await finaya_agent.autonomous_search_suggestion(
+        suggestions = await get_finaya_agent().autonomous_search_suggestion(
             request.lat, request.lng, request.business_params
         )
         return suggestions
@@ -83,7 +83,7 @@ async def get_executive_summary(
     Generates a formal investor-ready Executive Summary.
     """
     try:
-        summary = await finaya_agent.generate_executive_summary(request.context_data)
+        summary = await get_finaya_agent().generate_executive_summary(request.context_data)
         return {"summary": summary}
     except Exception as e:
         raise HTTPException(
@@ -100,7 +100,7 @@ async def simulate_competitor_impact_endpoint(
     Simulates the impact of a new hypothetical competitor.
     """
     try:
-        impact = await finaya_agent.simulate_competitor_impact(
+        impact = await get_finaya_agent().simulate_competitor_impact(
             request.current_data, 
             request.new_competitor
         )
@@ -120,7 +120,7 @@ async def analyze_competitor_sentiment_endpoint(
     Analyzes sentiment from competitor reviews to find market gaps.
     """
     try:
-        sentiment_analysis = await finaya_agent.analyze_competitor_sentiment(
+        sentiment_analysis = await get_finaya_agent().analyze_competitor_sentiment(
             request.reviews_text
         )
         return sentiment_analysis
