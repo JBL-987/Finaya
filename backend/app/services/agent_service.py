@@ -15,7 +15,15 @@ class FinayaAgent:
         # Configure Gemini Client (v1 SDK)
         self.api_key = settings.GEMINI_API_KEY
         self.model_name = settings.GEMINI_MODEL
-        self.client = genai.Client(api_key=self.api_key)
+        try:
+            if self.api_key:
+                self.client = genai.Client(api_key=self.api_key)
+            else:
+                print("⚠️ GEMINI_API_KEY not found. Agent features will be disabled.")
+                self.client = None
+        except Exception as e:
+             print(f"❌ Failed to initialize Gemini Client: {e}")
+             self.client = None
         
     def _format_competitors(self, competitors: List[Dict[str, Any]]) -> str:
         if not competitors:
@@ -65,6 +73,9 @@ class FinayaAgent:
         """
         Generates a formal investor-ready Executive Summary.
         """
+        if not self.client:
+            return "Executive Summary Unavailable (AI Agent disabled due to missing API Key)."
+
         metrics = context_data.get("metrics", {})
         risk_score = metrics.get("riskScore", 0.5)
         
@@ -122,6 +133,9 @@ class FinayaAgent:
         """
         Simulates the impact of a new hypothetical competitor.
         """
+        if not self.client:
+            return {"error": "AI Agent disabled due to missing API Key"}
+
         prompt = f"""
         You are a strategic market analyst.
 
@@ -164,6 +178,9 @@ class FinayaAgent:
         """
         Analyzes sentiment from competitor reviews to find market gaps.
         """
+        if not self.client:
+            return {"error": "AI Agent disabled due to missing API Key"}
+
         prompt = f"""
         You are a market intelligence analyst.
 
@@ -198,6 +215,9 @@ class FinayaAgent:
         """
         AI Business Advisor: Answers questions based on the analysis results.
         """
+        if not self.client:
+             return "I apologize, but I am currently disabled because the AI Engine API Key is missing."
+
         # 0. Fetch User History Context (if user_id provided)
         user_history_context = ""
         if user_id:
@@ -272,6 +292,9 @@ class FinayaAgent:
         """
         Simulated Autonomous Exploration Suggestion.
         """
+        if not self.client:
+            return []
+
         prompt = f"""
         Based on a location at {current_lat}, {current_lng} and these business parameters {params},
         suggest 3 potential nearby 'Pivot' locations (relative directions) that might yield higher ROI.
