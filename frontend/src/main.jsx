@@ -58,10 +58,25 @@ function Main() {
         }
       } else {
         // User is signed out from Firebase
-        console.log('User signed out from Firebase');
-        setIsAuthenticated(false);
-        setUser(null);
-        localStorage.removeItem('access_token');
+        const currentToken = localStorage.getItem('access_token');
+        if (currentToken === 'guest-token') {
+          console.log('Keeping guest session active');
+          // Ensure user state is persistent on reload if token exists
+          if (!user) {
+             console.log('Restoring guest user from token');
+             setUser({
+               email: "guest@finaya.app",
+               full_name: "Guest Judge",
+               role: "guest"
+             });
+             setIsAuthenticated(true);
+          }
+        } else {
+          console.log('User signed out from Firebase');
+          setIsAuthenticated(false);
+          setUser(null);
+          localStorage.removeItem('access_token');
+        }
       }
       
       setIsInitializing(false);
@@ -111,6 +126,24 @@ function Main() {
     }
   };
 
+  const guestLogin = () => {
+    console.log("Logging in as guest...");
+    setIsAuthenticated(true);
+    setUser({
+      email: "guest@finaya.app",
+      full_name: "Guest Judge",
+      role: "guest"
+    });
+    localStorage.setItem('access_token', 'guest-token');
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('demo') === 'true') {
+      guestLogin();
+    }
+  }, []);
+
   const logout = async () => {
     await authAPI.logout();
     await firebaseAuth.signOut(); // Sign out from Firebase
@@ -146,7 +179,7 @@ function Main() {
         <Route
           path="/"
           element={
-            isAuthenticated ? <Navigate to="/app" /> : <Home login={login} register={register} />
+            isAuthenticated ? <Navigate to="/app" /> : <Home login={login} register={register} guestLogin={guestLogin} />
           }
         />
         <Route

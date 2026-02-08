@@ -160,12 +160,52 @@ export const analysisAPI = {
 
   // Save analysis result
   save: async (analysisData) => {
+    // Check for guest mode
+    const token = localStorage.getItem('access_token');
+    if (token === 'guest-token') {
+      console.log('Guest mode: Saving to localStorage');
+      const savedAnalyses = JSON.parse(localStorage.getItem('guest_analyses') || '[]');
+      
+      const newAnalysis = {
+        ...analysisData,
+        id: `guest_${Date.now()}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        user_id: 'guest_user_123'
+      };
+      
+      savedAnalyses.push(newAnalysis);
+      localStorage.setItem('guest_analyses', JSON.stringify(savedAnalyses));
+      
+      return newAnalysis;
+    }
+
     const response = await api.post('/analysis/', analysisData);
     return response.data;
   },
 
   // Get all analysis results (paginated)
   getAll: async (offset = 0, limit = 10) => {
+    // Check for guest mode
+    const token = localStorage.getItem('access_token');
+    if (token === 'guest-token') {
+       console.log('Guest mode: Fetching from localStorage');
+       const savedAnalyses = JSON.parse(localStorage.getItem('guest_analyses') || '[]');
+       
+       // Sort by date desc
+       savedAnalyses.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+       
+       // Manual pagination
+       const paginatedItems = savedAnalyses.slice(offset, offset + limit);
+       
+       return {
+         items: paginatedItems,
+         total: savedAnalyses.length,
+         page: Math.floor(offset / limit) + 1,
+         size: limit
+       };
+    }
+
     const response = await api.get('/analysis/', {
       params: { offset, limit },
     });
@@ -174,18 +214,54 @@ export const analysisAPI = {
 
   // Get specific analysis
   getById: async (analysisId) => {
+    // Check for guest mode
+    const token = localStorage.getItem('access_token');
+    if (token === 'guest-token') {
+        const savedAnalyses = JSON.parse(localStorage.getItem('guest_analyses') || '[]');
+        const analysis = savedAnalyses.find(a => a.id === analysisId);
+        if (!analysis) throw new Error("Analysis not found");
+        return analysis;
+    }
+
     const response = await api.get(`/analysis/${analysisId}`);
     return response.data;
   },
 
   // Update analysis
   update: async (analysisId, updateData) => {
+      // Check for guest mode
+    const token = localStorage.getItem('access_token');
+    if (token === 'guest-token') {
+        const savedAnalyses = JSON.parse(localStorage.getItem('guest_analyses') || '[]');
+        const index = savedAnalyses.findIndex(a => a.id === analysisId);
+        
+        if (index === -1) throw new Error("Analysis not found");
+        
+        savedAnalyses[index] = {
+            ...savedAnalyses[index],
+            ...updateData,
+            updated_at: new Date().toISOString()
+        };
+        
+        localStorage.setItem('guest_analyses', JSON.stringify(savedAnalyses));
+        return savedAnalyses[index];
+    }
+    
     const response = await api.patch(`/analysis/${analysisId}`, updateData);
     return response.data;
   },
 
   // Delete analysis
   delete: async (analysisId) => {
+    // Check for guest mode
+    const token = localStorage.getItem('access_token');
+    if (token === 'guest-token') {
+        let savedAnalyses = JSON.parse(localStorage.getItem('guest_analyses') || '[]');
+        savedAnalyses = savedAnalyses.filter(a => a.id !== analysisId);
+        localStorage.setItem('guest_analyses', JSON.stringify(savedAnalyses));
+        return;
+    }
+
     await api.delete(`/analysis/${analysisId}`);
   },
 };

@@ -19,7 +19,7 @@ const StatItem = ({ value, label }) => (
 );
 
 // --- MAIN COMPONENT ---
-export default function GlassmorphismHero({ onGetStarted }) {
+export default function GlassmorphismHero({ onGetStarted, onGuestLogin }) {
   return (
     <div className="relative w-full bg-zinc-950 text-white overflow-hidden font-sans">
       {/* 
@@ -91,6 +91,14 @@ export default function GlassmorphismHero({ onGetStarted }) {
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </button>
               
+              <button 
+                onClick={onGuestLogin}
+                className="rounded-full bg-white/10 text-white border border-white/20 transition-all duration-300 ease-out transform hover:scale-105 hover:bg-white/20 hover:border-white/30 flex items-center justify-center gap-2 px-6 py-3 font-medium shadow-lg backdrop-blur-sm group"
+              >
+                <Zap className="w-4 h-4 text-yellow-400 group-hover:text-yellow-300" />
+                Try Demo
+              </button>
+
               <a
                 href="#features"
                 className="rounded-full bg-transparent text-white border border-white/20 transition-all duration-300 ease-out transform hover:scale-105 hover:bg-yellow-400 hover:text-black hover:border-transparent flex items-center justify-center gap-2 px-6 py-3 font-medium shadow-lg backdrop-blur-sm"

@@ -14,7 +14,7 @@ import Marquee from "react-fast-marquee";
 import GlassmorphismHero from "../components/ui/GlassmorphismHero";
 import StatCard from "../components/ui/StatCard";
 
-export default function Home({ login, register }) {
+export default function Home({ login, register, guestLogin }) {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   // GSAP Animations
@@ -200,7 +200,7 @@ export default function Home({ login, register }) {
   return (
     <main className="overflow-hidden bg-black">
       {/* Modern Glassmorphism Hero Section */}
-      <GlassmorphismHero onGetStarted={() => setShowAuthModal(true)} />
+      <GlassmorphismHero onGetStarted={() => setShowAuthModal(true)} onGuestLogin={guestLogin} />
 
       {/* Auth Modal */}
       <AuthModal
