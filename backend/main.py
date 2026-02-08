@@ -72,11 +72,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Custom Middleware
-# app.add_middleware(RequestLoggingMiddleware) # Disabled for debugging
-
-# CORS Configuration - Must be added LAST to run FIRST
-# origins = settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS else []
+origins = settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS else []
 
 app.add_middleware(
     CORSMiddleware,
