@@ -37,18 +37,31 @@ class RateLimiter:
                 self._redis = Redis.from_url(settings.REDIS_URL, encoding="utf-8", decode_responses=True)
                 await self._redis.ping()
 
+                # Define key function that skips OPTIONS
+                def get_key_func(request: Request):
+                    if request.method == "OPTIONS":
+                        return None # Skip rate limiting for OPTIONS
+                    return get_remote_address(request)
+
                 # Initialize limiter with Redis backend
                 self._limiter = Limiter(
-                    key_func=get_remote_address,
+                    key_func=get_key_func,
                     storage_uri=settings.REDIS_URL,
                     default_limits=[f"{settings.RATE_LIMIT_REQUESTS} per {settings.RATE_LIMIT_WINDOW} seconds"]
                 )
                 logger.info(" Rate limiter initialized with Redis backend")
             except Exception as e:
                 logger.warning(f" Redis not available, using in-memory rate limiting: {e}")
+                
+                # Define key function that skips OPTIONS
+                def get_key_func(request: Request):
+                    if request.method == "OPTIONS":
+                        return None # Skip rate limiting for OPTIONS
+                    return get_remote_address(request)
+
                 # Fallback to in-memory limiter
                 self._limiter = Limiter(
-                    key_func=get_remote_address,
+                    key_func=get_key_func,
                     default_limits=[f"{settings.RATE_LIMIT_REQUESTS} per {settings.RATE_LIMIT_WINDOW} seconds"]
                 )
 

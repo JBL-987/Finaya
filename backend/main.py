@@ -73,11 +73,14 @@ app = FastAPI(
 )
 
 origins = settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS else []
+# Explicitly add Vercel and Localhost to handle the user's specific request EXACTLY
+if "https://finaya.vercel.app" not in origins:
+    origins.append("https://finaya.vercel.app")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False, 
+    allow_origins=origins,  # Explicit origins 
+    allow_credentials=True, # Allow cookies/auth headers
     allow_methods=["*"],
     allow_headers=["*"],
 )
