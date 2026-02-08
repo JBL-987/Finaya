@@ -1,6 +1,18 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const getBaseUrl = () => {
+  let url = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+  
+  // Check if we are in production (Vercel) but using localhost
+  if (import.meta.env.PROD && url.includes('localhost')) {
+    console.warn('API URL is pointing to localhost in production!', url);
+    // You might want to default to a placeholder or specific production URL if known
+    // url = 'https://your-railway-backend.app/api/v1'; 
+  }
+  return url;
+};
+
+const API_BASE_URL = getBaseUrl();
 
 // Create axios instance
 const api = axios.create({
