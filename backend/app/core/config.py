@@ -12,11 +12,11 @@ class Settings(BaseSettings):
     MONGODB_DB_NAME: str = "(default)"
 
     # Firebase
-    FIREBASE_PROJECT_ID: str
-    FIREBASE_PRIVATE_KEY_ID: str
-    FIREBASE_PRIVATE_KEY: str
-    FIREBASE_CLIENT_EMAIL: str
-    FIREBASE_CLIENT_ID: str
+    FIREBASE_PROJECT_ID: str = ""
+    FIREBASE_PRIVATE_KEY_ID: str = ""
+    FIREBASE_PRIVATE_KEY: str = ""
+    FIREBASE_CLIENT_EMAIL: str = ""
+    FIREBASE_CLIENT_ID: str = ""
     FIREBASE_AUTH_URI: str = "https://accounts.google.com/o/oauth2/auth"
     FIREBASE_TOKEN_URI: str = "https://oauth2.googleapis.com/token"
     FIREBASE_AUTH_PROVIDER_CERT_URL: str = "https://www.googleapis.com/oauth2/v1/certs"
@@ -24,14 +24,14 @@ class Settings(BaseSettings):
     FIREBASE_STORAGE_BUCKET: str = ""
 
     # Google Gemini API
-    GEMINI_API_KEY: str
+    GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3-flash-preview"  # Updated default
     GOOGLE_MAPS_API_KEY: str = "" # Optional, if using Places API
     GOOGLE_SEARCH_API_KEY: str = "" # Custom Search JSON API Key
     GOOGLE_SEARCH_CX: str = ""      # Programmable Search Engine ID
 
     # Security
-    SECRET_KEY: str
+    SECRET_KEY: str = "default_unsafe_secret_key_for_dev_only"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080
 
     # CORS
