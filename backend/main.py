@@ -13,6 +13,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.analysis import router as analysis_router
 from app.core.middleware import RequestLoggingMiddleware
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 # Security
 security = HTTPBearer()
