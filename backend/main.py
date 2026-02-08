@@ -72,15 +72,25 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-origins = settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS else []
-# Explicitly add Vercel and Localhost to handle the user's specific request EXACTLY
-if "https://finaya.vercel.app" not in origins:
-    origins.append("https://finaya.vercel.app")
+# Middleware Configuration
+# 1. SlowAPI Middleware (Runs AFTER CORS because it's added first in stack logic if we add CORS last?)
+# Wait, FastAPI add_middleware adds to the TOP.
+# So if we want CORS to be TOP (run first), we add it LAST.
+# If we want SlowAPI to run AFTER CORS, we add it BEFORE CORS.
 
+# Add SlowAPI Middleware
+app.add_middleware(SlowAPIMiddleware)
+
+# 2. CORS Configuration - Added LAST so it runs FIRST (outermost)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # Explicit origins 
-    allow_credentials=True, # Allow cookies/auth headers
+    allow_origins=[
+        "https://finaya.vercel.app",
+        "https://finaya-production-f6f2.up.railway.app", # Self
+        "http://localhost:5173",
+        "http://localhost:3000"
+    ],
+    allow_credentials=False, # As requested for Bearer auth
     allow_methods=["*"],
     allow_headers=["*"],
 )
