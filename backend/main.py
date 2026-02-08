@@ -11,7 +11,7 @@ from app.core.dependencies import container, container_context
 from app.core.ratelimiter import rate_limiter, rate_limit_exceeded_handler  
 from app.api.v1.auth import router as auth_router
 from app.api.v1.analysis import router as analysis_router
-from app.core.middleware import RequestLoggingMiddleware
+from app.core.middleware import RequestLoggingMiddleware, OptionsMiddleware
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -85,16 +85,15 @@ app.add_middleware(SlowAPIMiddleware)
 # 2. CORS Configuration - Added LAST so it runs FIRST (outermost)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://finaya.vercel.app",
-        "https://finaya-production-f6f2.up.railway.app", # Self
-        "http://localhost:5173",
-        "http://localhost:3000"
-    ],
+    allow_origins=settings.cors_origins_list,  # ✅ Use parsed list from settings
     allow_credentials=False, # As requested for Bearer auth
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 3. OPTIONS Middleware - Added LAST to run FIRST (Skip all processing for OPTIONS)
+# This ensures preflight requests don't hit rate limiting or other middleware
+app.add_middleware(OptionsMiddleware)
 
 # Health Check
 @app.get("/health")

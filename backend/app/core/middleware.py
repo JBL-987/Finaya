@@ -6,10 +6,24 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class OptionsMiddleware(BaseHTTPMiddleware):
+    """Skip all processing for OPTIONS requests (CORS preflight)"""
+    
+    async def dispatch(self, request: Request, call_next):
+        # ✅ Skip all middleware processing for OPTIONS
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        
+        return await call_next(request)
+
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """Log all incoming requests"""
     
     async def dispatch(self, request: Request, call_next):
+        # Skip logging OPTIONS to reduce noise
+        if request.method == "OPTIONS":
+            return await call_next(request)
+            
         start_time = time.time()
         
         # Log request

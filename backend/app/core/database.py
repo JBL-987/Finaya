@@ -25,6 +25,11 @@ class Database:
 
         # 2. Initialize Firebase
         try:
+            # ✅ Early exit if Firebase config is completely empty
+            if not settings.FIREBASE_PROJECT_ID:
+                logger.warning(" Firebase disabled - FIREBASE_PROJECT_ID not set")
+                return
+            
             if not firebase_admin._apps:
                 # Check for JSON credential file in backend/ directory
                 # We are in backend/app/core, so we need to go up two levels
@@ -37,7 +42,7 @@ class Database:
                 if os.path.exists(cred_path):
                     cred = credentials.Certificate(cred_path)
                     firebase_admin.initialize_app(cred)
-                    logger.info(f" Firebase Admin initialized with file: {json_file}")
+                    logger.info(f"✅ Firebase Admin initialized with file: {json_file}")
                 elif settings.FIREBASE_PRIVATE_KEY:
                     # Fallback to env vars
                     logger.warning("Firebase JSON file not found, attempting to use settings...")
