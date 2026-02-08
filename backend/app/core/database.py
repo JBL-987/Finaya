@@ -17,7 +17,7 @@ class Database:
             self.client = AsyncIOMotorClient(settings.MONGODB_URL)
             # Verify connection
             await self.client.admin.command('ping')
-            logger.info(f"✅ MongoDB connected to {settings.MONGODB_URL}")
+            logger.info(f" MongoDB connected to {settings.MONGODB_URL}")
         except Exception as e:
             logger.error(f"❌ MongoDB connection failed: {e}")
             raise e
@@ -36,7 +36,7 @@ class Database:
                 if os.path.exists(cred_path):
                     cred = credentials.Certificate(cred_path)
                     firebase_admin.initialize_app(cred)
-                    logger.info(f"✅ Firebase Admin initialized with file: {json_file}")
+                    logger.info(f" Firebase Admin initialized with file: {json_file}")
                 elif settings.FIREBASE_PRIVATE_KEY:
                     # Fallback to env vars
                     logger.warning("Firebase JSON file not found, attempting to use settings...")
@@ -54,11 +54,11 @@ class Database:
                     }
                     cred = credentials.Certificate(cred_dict)
                     firebase_admin.initialize_app(cred)
-                    logger.info("✅ Firebase Admin initialized with Environment Variables")
+                    logger.info(" Firebase Admin initialized with Environment Variables")
                 else:
-                    logger.warning("⚠️ No Firebase credentials found (File or Env). Firebase features will fail.")
+                    logger.warning(" No Firebase credentials found (File or Env). Firebase features will fail.")
             else:
-                 logger.info("✅ Firebase Admin already initialized")
+                 logger.info(" Firebase Admin already initialized")
 
         except Exception as e:
             logger.error(f"❌ Firebase initialization failed: {e}")
