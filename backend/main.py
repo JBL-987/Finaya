@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
         logger.info("Rate limiter initialized and added to app state")
     except Exception as e:
         logger.error(f"❌ Failed to initialize rate limiter: {e}")
-        raise
+        # raise # Allow startup to continue
 
     # Initialize dependency container
     try:
@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
         logger.info("Dependency container initialized")
     except Exception as e:
         logger.error(f"❌ Failed to initialize dependency container: {e}")
-        raise
+        # raise # Allow startup to continue
 
     # Initialize database
     try:

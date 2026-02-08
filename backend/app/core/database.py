@@ -20,7 +20,8 @@ class Database:
             logger.info(f" MongoDB connected to {settings.MONGODB_URL}")
         except Exception as e:
             logger.error(f"❌ MongoDB connection failed: {e}")
-            raise e
+            # Do not raise to allow app startup for debugging
+            # raise e
 
         # 2. Initialize Firebase
         try:
