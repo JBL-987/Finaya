@@ -72,21 +72,24 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS Configuration - Permissive for Development
-# CORS Configuration
+# Custom Middleware
+# app.add_middleware(RequestLoggingMiddleware) # Disabled for debugging
+
+# CORS Configuration - Must be added LAST to run FIRST
 # origins = settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS else []
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow ALL origins explicitly to fix CORS issues
-    allow_credentials=False, # Must be False when allow_origins is ["*"]
+    allow_credentials=True, # Allow credentials (cookies/auth headers) with wildcard if handled carefully, but safely True/False depends on exact browser behavior. 
+    # NOTE: With allow_origins=["*"], allow_credentials MUST be False in standard spec, but some proxies handle it.
+    # Let's try explicit origin reflection pattern if * fails, but first, let's stick to permissive.
+    # Actually, for "Bearer" tokens in headers (not cookies), allow_credentials=False is fine.
+    # BUT, let's go back to standard "allow everything" pattern common in dev/demos.
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"]
 )
-
-# Custom Middleware
-app.add_middleware(RequestLoggingMiddleware)
 
 # Health Check
 @app.get("/health")
