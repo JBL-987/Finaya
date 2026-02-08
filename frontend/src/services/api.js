@@ -156,20 +156,36 @@ export const analysisAPI = {
        console.log('Guest mode: Simulating calculation');
        await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate delay
        
+       const monthlyRevenue = 15000000 + Math.floor(Math.random() * 5000000);
+       
        return {
          analysis_id: `guest_calc_${Date.now()}`,
          metrics: {
-           monthlyRevenue: 15000000 + Math.random() * 5000000,
            tppd: Math.floor(50 + Math.random() * 30),
-           areaData: { areaSqKm: 0.5 },
+           dailyRevenue: Math.floor(monthlyRevenue / 30),
+           monthlyRevenue: monthlyRevenue,
+           yearlyRevenue: monthlyRevenue * 12,
+           locationScore: (7.5 + Math.random() * 2).toFixed(1),
+           riskScore: 0.15 + Math.random() * 0.2, // 0.15 - 0.35
+           confidenceLevel: "High",
+           assumptions: "Standard urban density model applied based on commercial zoning.",
+           
+           // Technical Calculation breakdown
+           cglp: Math.floor(1500 + Math.random() * 1000), // Catchment Area Population
+           pops: Math.floor(5000 + Math.random() * 2000), // Residential Population
+           apt: Math.floor(200 + Math.random() * 100),    // Traffic Potential
+           pdr: (0.2 + Math.random() * 0.3).toFixed(2),   // Road Density
+           
+           areaData: { areaSqKm: 0.8 },
            estimatedVisitors: Math.floor(100 + Math.random() * 50),
            profitMargin: 0.25
          },
          area_distribution: {
-            residential: 0.4,
-            commercial: 0.3,
-            park: 0.1,
-            road: 0.2
+            residential: 35,
+            commercial: 25,
+            openSpace: 15,
+            road: 25,
+            reasoning: "High commercial viability detected due to balanced residential and road connectivity."
          },
          location_name: "Guest Demo Location"
        };
@@ -192,20 +208,36 @@ export const analysisAPI = {
        console.log('Guest mode: Simulating analysis');
        await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate delay
        
+       const monthlyRevenue = 12000000 + Math.floor(Math.random() * 8000000);
+
        return {
          analysis_id: `guest_analyze_${Date.now()}`,
          metrics: {
-           monthlyRevenue: 12000000 + Math.random() * 8000000,
            tppd: Math.floor(40 + Math.random() * 40),
+           dailyRevenue: Math.floor(monthlyRevenue / 30),
+           monthlyRevenue: monthlyRevenue,
+           yearlyRevenue: monthlyRevenue * 12,
+           locationScore: (7.0 + Math.random() * 2.5).toFixed(1),
+           riskScore: 0.2 + Math.random() * 0.2,
+           confidenceLevel: "Medium",
+           assumptions: "Based on estimated foot traffic and visible density.",
+           
+           // Technical breakdown
+           cglp: Math.floor(1200 + Math.random() * 800),
+           pops: Math.floor(4000 + Math.random() * 3000),
+           apt: Math.floor(150 + Math.random() * 150),
+           pdr: (0.15 + Math.random() * 0.4).toFixed(2),
+
            areaData: { areaSqKm: 0.8 },
            estimatedVisitors: Math.floor(80 + Math.random() * 60),
            profitMargin: 0.20 + Math.random() * 0.1
          },
          area_distribution: {
-            residential: 0.35,
-            commercial: 0.25,
-            park: 0.15,
-            road: 0.25
+            residential: 40,
+            commercial: 20,
+            openSpace: 10,
+            road: 30,
+            reasoning: "Moderate potential zone with mixed residential and accessible networks."
          },
          location_name: "Guest Demo Location",
          raw_response: "Simulated AI Analysis for Guest Mode"
