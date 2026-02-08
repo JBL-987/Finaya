@@ -5,9 +5,18 @@ const getBaseUrl = () => {
   
   // Check if we are in production (Vercel) but using localhost
   if (import.meta.env.PROD && url.includes('localhost')) {
-    console.warn('API URL is pointing to localhost in production!', url);
-    // You might want to default to a placeholder or specific production URL if known
-    // url = 'https://your-railway-backend.app/api/v1'; 
+    console.error('CRITICAL: API URL is pointing to localhost in production!', url);
+    // Alert the user so they know why it's failing
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        alert(
+          "CONFIGURATION ERROR: The VITE_API_BASE_URL environment variable is missing in your Vercel settings!\n\n" +
+          "Your app is trying to connect to 'localhost', which prevents it from working in production due to security blocking (Mixed Content).\n\n" +
+          "Please go to your Vercel Dashboard -> Settings -> Environment Variables and add:\n" +
+          "VITE_API_BASE_URL=" + "https://your-railway-backend-url.app/api/v1"
+        );
+      }, 1000);
+    }
   }
   return url;
 };
