@@ -4,13 +4,16 @@ import { Link } from "react-router-dom";
 import CurrencySelector from "./CurrencySelector";
 import { useCurrency } from "../contexts/CurrencyContext";
 
-const Navbar_Component = ({ isAuthenticated, logout }) => {
+const Navbar_Component = ({ isAuthenticated, logout, user }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { selectedCurrency, changeCurrency } = useCurrency();
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
+
+  // Check if user is guest
+  const isGuest = user?.role === "guest";
 
   return (
     <nav className="bg-black/90 backdrop-blur-md fixed w-full z-50 top-0 start-0 border-b border-yellow-400 shadow-sm">
@@ -74,12 +77,15 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
               >
                 Location Analysis
               </Link>  
-              <button
-                onClick={logout}
-                className="rounded-full bg-yellow-600 text-white border border-transparent transition-all duration-300 ease-out transform hover:scale-105 hover:bg-white hover:text-yellow-600 hover:border-yellow-600 flex items-center justify-center gap-2 px-6 py-3 font-medium shadow-lg hover:shadow-xl text-sm"
-              >
-                Logout
-              </button>
+              {/* ✅ Hide Logout button for guest users */}
+              {!isGuest && (
+                <button
+                  onClick={logout}
+                  className="rounded-full bg-yellow-600 text-white border border-transparent transition-all duration-300 ease-out transform hover:scale-105 hover:bg-white hover:text-yellow-600 hover:border-yellow-600 flex items-center justify-center gap-2 px-6 py-3 font-medium shadow-lg hover:shadow-xl text-sm"
+                >
+                  Logout
+                </button>
+              )}
             </>
           )}
         </div>
@@ -133,7 +139,7 @@ const Navbar_Component = ({ isAuthenticated, logout }) => {
                 </>
               )}
 
-              {isAuthenticated && (
+              {isAuthenticated && !isGuest && (
                 <div className="border-t border-neutral-800 pt-4 mt-2 space-y-3">
                   <button
                     onClick={() => {
