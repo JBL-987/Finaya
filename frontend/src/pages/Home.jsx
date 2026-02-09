@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import {
   BarChart3,
   Brain,
@@ -14,8 +15,9 @@ import Marquee from "react-fast-marquee";
 import GlassmorphismHero from "../components/ui/GlassmorphismHero";
 import StatCard from "../components/ui/StatCard";
 
-export default function Home({ login, register, guestLogin }) {
+export default function Home({ login, register, guestLogin, isAuthenticated }) {
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const navigate = useNavigate();
 
   // GSAP Animations
   useEffect(() => {
@@ -147,6 +149,19 @@ export default function Home({ login, register, guestLogin }) {
     };
   }, []);
 
+  const handleCTA = () => {
+    if (isAuthenticated) {
+      navigate('/app');
+    } else {
+      setShowAuthModal(true);
+    }
+  };
+
+  const handleGuestDemo = () => {
+    guestLogin();
+    navigate('/app');
+  };
+
   // Data Features - PRESERVED TEXT CONTENT
   const features = [
     {
@@ -200,7 +215,11 @@ export default function Home({ login, register, guestLogin }) {
   return (
     <main className="overflow-hidden bg-black">
       {/* Modern Glassmorphism Hero Section */}
-      <GlassmorphismHero onGetStarted={() => setShowAuthModal(true)} onGuestLogin={guestLogin} />
+      <GlassmorphismHero 
+        onGetStarted={handleCTA} 
+        onGuestLogin={handleGuestDemo} 
+        isAuthenticated={isAuthenticated} 
+      />
 
       {/* Auth Modal */}
       <AuthModal
@@ -422,11 +441,11 @@ export default function Home({ login, register, guestLogin }) {
               </p>
               
               <button
-                onClick={() => setShowAuthModal(true)}
+                onClick={handleCTA}
                 className="rounded-full bg-yellow-400 text-black border border-transparent transition-all duration-300 ease-out transform hover:scale-105 hover:bg-black hover:text-white hover:border-yellow-400 flex items-center justify-center gap-2 px-6 py-3 font-medium shadow-lg"
               >
                 <BarChart3 className="w-5 h-5" />
-                Get Started Now
+                {isAuthenticated ? "Go to Analysis App" : "Get Started Now"}
                 <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
               </button>
             </div>

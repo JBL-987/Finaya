@@ -18,7 +18,7 @@ const Navbar_Component = ({ isAuthenticated, logout, user }) => {
   return (
     <nav className="bg-black/90 backdrop-blur-md fixed w-full z-50 top-0 start-0 border-b border-yellow-400 shadow-sm">
       <div className="max-w-7xl flex flex-wrap items-center justify-between mx-auto p-4">
-        <div className="flex items-center space-x-3 rtl:space-x-reverse">
+        <Link to="/" className="flex items-center space-x-3 rtl:space-x-reverse">
           <div className="flex items-center space-x-2">
             <img
               src="/Finaya_Logo.svg"
@@ -26,7 +26,7 @@ const Navbar_Component = ({ isAuthenticated, logout, user }) => {
               className="h-12 w-20 sm:h-12 sm:w-24 object-contain"
             />
           </div>
-        </div>
+        </Link>
 
         <button
           onClick={toggleMobileMenu}
@@ -51,12 +51,6 @@ const Navbar_Component = ({ isAuthenticated, logout, user }) => {
               >
                   Coverage
                 </a>
-                <Link
-                  to="/auth"
-                  className="rounded-full bg-yellow-400 text-black border border-transparent transition-all duration-300 ease-out transform hover:scale-105 hover:bg-white hover:text-yellow-600 flex items-center justify-center px-5 py-2 font-bold shadow-lg hover:shadow-xl text-sm"
-                >
-                  Sign In
-                </Link>
               </>
           ) : (
             <>
@@ -65,6 +59,7 @@ const Navbar_Component = ({ isAuthenticated, logout, user }) => {
                 selectedCurrency={selectedCurrency}
                 onCurrencyChange={changeCurrency}
                 />
+
               <Link
                 to="/dashboard"
                 className="text-white hover:text-yellow-400 transition-colors font-semibold text-sm lg:text-base py-2"
@@ -77,15 +72,12 @@ const Navbar_Component = ({ isAuthenticated, logout, user }) => {
               >
                 Location Analysis
               </Link>  
-              {/* ✅ Hide Logout button for guest users */}
-              {!isGuest && (
-                <button
-                  onClick={logout}
-                  className="rounded-full bg-yellow-600 text-white border border-transparent transition-all duration-300 ease-out transform hover:scale-105 hover:bg-white hover:text-yellow-600 hover:border-yellow-600 flex items-center justify-center gap-2 px-6 py-3 font-medium shadow-lg hover:shadow-xl text-sm"
-                >
-                  Logout
-                </button>
-              )}
+              <button
+                onClick={logout}
+                className="rounded-full bg-yellow-600 text-white border border-transparent transition-all duration-300 ease-out transform hover:scale-105 hover:bg-white hover:text-yellow-600 hover:border-yellow-600 flex items-center justify-center gap-2 px-6 py-3 font-medium shadow-lg hover:shadow-xl text-sm"
+              >
+                {isGuest ? "Exit Guest" : "Logout"}
+              </button>
             </>
           )}
         </div>
@@ -122,6 +114,7 @@ const Navbar_Component = ({ isAuthenticated, logout, user }) => {
                       className="w-full"
                     />
                   </div>
+
                   <Link
                     to="/dashboard"
                     onClick={() => setMobileMenuOpen(false)}
@@ -139,7 +132,7 @@ const Navbar_Component = ({ isAuthenticated, logout, user }) => {
                 </>
               )}
 
-              {isAuthenticated && !isGuest && (
+              {isAuthenticated && (
                 <div className="border-t border-neutral-800 pt-4 mt-2 space-y-3">
                   <button
                     onClick={() => {
@@ -148,7 +141,7 @@ const Navbar_Component = ({ isAuthenticated, logout, user }) => {
                     }}
                     className="w-full rounded-full bg-yellow-600 text-white border border-transparent transition-all duration-300 ease-out transform hover:scale-105 hover:bg-white hover:text-yellow-600 hover:border-yellow-600 flex items-center justify-center gap-2 py-3 font-medium shadow-lg hover:shadow-xl"
                   >
-                    Logout
+                    {isGuest ? "Exit Guest" : "Logout"}
                   </button>
                 </div>
               )}

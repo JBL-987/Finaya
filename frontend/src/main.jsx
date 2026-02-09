@@ -178,9 +178,7 @@ function Main() {
       <Routes>
         <Route
           path="/"
-          element={
-            isAuthenticated ? <Navigate to="/app" /> : <Home login={login} register={register} guestLogin={guestLogin} />
-          }
+          element={<Home login={login} register={register} guestLogin={guestLogin} isAuthenticated={isAuthenticated} />}
         />
         <Route
           path="/app"
