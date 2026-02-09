@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Box, Lock, Search, Settings, Sparkles, MapPin, TrendingUp, History, User } from "lucide-react";
+import { Box, Lock, Search, Settings, Sparkles, MapPin, TrendingUp, History, User, AlertCircle } from "lucide-react";
 import { GlowingEffect } from "../components/ui/GlowingEffect";
 import { cn } from "@/lib/utils";
 import { analysisAPI, authAPI } from "../services/api";
 import { firebaseAuth } from "../services/firebase";
+import { getGuestAnalyses, migrateGuestAnalysesToUser, hasGuestAnalyses } from "../utils/guestStorage";
 import { Link } from "react-router-dom";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../components/ui/chart";
 import AIAdvisor from "../components/AIAdvisor";
+import Swal from "sweetalert2";
 
 const GridItem = ({ area, icon, title, description, content, link }) => {
   const Wrapper = link ? Link : "div";
@@ -54,7 +56,9 @@ const Dashboard = () => {
         topCategory: "N/A",
         userName: "User",
         userPhoto: null,
-        chartData: []
+        chartData: [],
+        hasGuestData: false,
+        guestAnalysesCount: 0
     });
     const [loading, setLoading] = useState(true);
 
@@ -71,16 +75,26 @@ const Dashboard = () => {
                 // Fetch user profile
                 const currentUser = await authAPI.getCurrentUser();
                 
-                // Fetch analysis history
-                const analyses = await analysisAPI.getAll(0, 50); 
+                // Fetch analysis history from backend
+                let backendAnalyses = [];
+                try {
+                    const analyses = await analysisAPI.getAll(0, 50);
+                    backendAnalyses = Array.isArray(analyses) ? analyses : (analyses.items || []);
+                } catch (error) {
+                    console.log('Could not fetch backend analyses (user may not be logged in):', error);
+                }
                 
-                // Process data
-                const analysisList = Array.isArray(analyses) ? analyses : (analyses.items || []);
+                // Fetch guest analyses from localStorage
+                const guestAnalyses = getGuestAnalyses();
+                const hasGuest = hasGuestAnalyses();
                 
-                const total = analysisList.length;
+                // Merge analyses (guest + backend)
+                const allAnalyses = [...guestAnalyses, ...backendAnalyses];
+                
+                const total = allAnalyses.length;
                 
                 // Sort by date 
-                const sorted = [...analysisList].sort((a, b) => {
+                const sorted = [...allAnalyses].sort((a, b) => {
                     return new Date(b.created_at) - new Date(a.created_at);
                 });
 
@@ -88,7 +102,7 @@ const Dashboard = () => {
                 
                 // Calculate Top Category
                 const categories = {};
-                analysisList.forEach(a => {
+                allAnalyses.forEach(a => {
                     const type = a.data?.business_params?.business_type || "General";
                     categories[type] = (categories[type] || 0) + 1;
                 });
@@ -112,7 +126,7 @@ const Dashboard = () => {
                   chartDataMap[key] = 0;
                 }
 
-                analysisList.forEach(a => {
+                allAnalyses.forEach(a => {
                     if (a.created_at) {
                         const date = new Date(a.created_at);
                         const month = date.toLocaleString('default', { month: 'short' });
@@ -135,9 +149,11 @@ const Dashboard = () => {
                     totalAnalyses: total,
                     recentAnalyses: recent,
                     topCategory: topCat === "None" ? "No data yet" : topCat,
-                    userName: currentUser?.full_name || currentUser?.email?.split('@')[0] || "Trader",
+                    userName: currentUser?.full_name || currentUser?.email?.split('@')[0] || (fbUser ? "User" : "Guest"),
                     userPhoto: fbUser?.photoURL || null,
-                    chartData: chartData
+                    chartData: chartData,
+                    hasGuestData: hasGuest && fbUser !== null, // Only show migration prompt if logged in AND has guest data
+                    guestAnalysesCount: guestAnalyses.length
                 });
 
             } catch (err) {
@@ -149,6 +165,59 @@ const Dashboard = () => {
 
         fetchData();
     }, []);
+
+    const handleMigrateGuestData = async () => {
+        const result = await Swal.fire({
+            icon: 'question',
+            title: 'Migrate Guest Analyses?',
+            html: `
+                <p>You have <strong>${stats.guestAnalysesCount}</strong> analysis/analyses saved as a guest.</p>
+                <p class="mt-2">Would you like to transfer them to your account for permanent storage?</p>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Migrate',
+            cancelButtonText: 'Not Now',
+            background: '#ffffff',
+            color: '#1f2937',
+            confirmButtonColor: '#d97706',
+            cancelButtonColor: '#6b7280'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const migrationResult = await migrateGuestAnalysesToUser(async (analysisData) => {
+                    // Use the API to save to backend
+                    return await analysisAPI.create(analysisData);
+                });
+
+                if (migrationResult.success) {
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Migration Complete!',
+                        text: `Successfully migrated ${migrationResult.migrated} analysis/analyses to your account.`,
+                        background: '#ffffff',
+                        color: '#1f2937',
+                        confirmButtonColor: '#d97706'
+                    });
+
+                    // Reload the page to refresh data
+                    window.location.reload();
+                } else {
+                    throw new Error('Migration failed');
+                }
+            } catch (error) {
+                console.error('Migration error:', error);
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'Migration Failed',
+                    text: 'Failed to migrate your analyses. Please try again later.',
+                    background: '#ffffff',
+                    color: '#1f2937',
+                    confirmButtonColor: '#dc2626'
+                });
+            }
+        }
+    };
 
     if (loading) {
         return (
@@ -173,6 +242,25 @@ const Dashboard = () => {
         </div>
         <p className="text-muted-foreground mb-8">Here's an overview of your location analysis activity.</p>
         
+        {/* Guest Data Migration Banner */}
+        {stats.hasGuestData && (
+          <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground mb-1">Guest Analyses Found</h3>
+              <p className="text-sm text-muted-foreground">
+                You have {stats.guestAnalysesCount} analysis/analyses saved as a guest. Migrate them to your account for permanent storage.
+              </p>
+            </div>
+            <button
+              onClick={handleMigrateGuestData}
+              className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black font-medium rounded-lg transition-colors whitespace-nowrap"
+            >
+              Migrate Now
+            </button>
+          </div>
+        )}
+        
         <ul className="grid grid-cols-1 gap-4 md:grid-cols-12 lg:gap-4">
           
           {/* Main Stat: Total Analyses */}
@@ -182,8 +270,22 @@ const Dashboard = () => {
             title="Total Analyses"
             description="Total locations you have analyzed."
             content={
-                <div className="text-5xl font-bold text-foreground mt-2">
-                    {stats.totalAnalyses}
+                <div className="mt-2">
+                    <div className="text-5xl font-bold text-foreground">
+                        {stats.totalAnalyses}
+                    </div>
+                    {stats.guestAnalysesCount > 0 && (
+                        <div className="mt-3 text-xs text-muted-foreground flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                                <span>{stats.guestAnalysesCount} temporary (guest)</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                <span>{stats.totalAnalyses - stats.guestAnalysesCount} permanent</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             }
           />

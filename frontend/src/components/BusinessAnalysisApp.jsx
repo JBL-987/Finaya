@@ -6,6 +6,8 @@ import { CURRENCIES } from '../services/currencies';
 import { useAnalysis } from '../hooks/useAnalysis';
 import { analysisAPI, placesAPI } from '../services/api';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { saveGuestAnalysis, hasGuestAnalyses } from '../utils/guestStorage';
+import { firebaseAuth } from '../services/firebase';
 import MapComponent from './MapComponent';
 import AnalysisForm from './AnalysisForm';
 import ProgressPanel from './ProgressPanel';
@@ -366,7 +368,10 @@ const BusinessAnalysisApp = () => {
     }
 
     try {
+      // Check if user is authenticated
+      const currentUser = firebaseAuth.getCurrentUser();
       const locationName = analysisResults.locationName || `${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)}`;
+      
       const analysisData = {
         name: `Business Analysis - ${locationName}`,
         location: `${selectedLocation.lat}, ${selectedLocation.lng}`,
@@ -375,17 +380,49 @@ const BusinessAnalysisApp = () => {
         gemini_analysis: analysisResults.areaDistribution
       };
 
-      await createAnalysis(analysisData);
+      if (!currentUser) {
+        // Guest mode - save to localStorage
+        const savedAnalysis = saveGuestAnalysis(analysisData);
+        
+        if (savedAnalysis) {
+          const result = await Swal.fire({
+            icon: 'info',
+            title: 'Analysis Saved Temporarily',
+            html: `
+              <p>Your analysis has been saved to your browser.</p>
+              <p class="text-sm text-gray-600 mt-2">💡 <strong>Guest Mode:</strong> Your data is stored locally and will be lost if you clear your browser data.</p>
+              <p class="text-sm text-yellow-600 mt-2">✨ <strong>Sign up for a free account</strong> to save your analyses permanently!</p>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'Sign Up Now',
+            cancelButtonText: 'Continue as Guest',
+            background: '#ffffff',
+            color: '#1f2937',
+            confirmButtonColor: '#d97706',
+            cancelButtonColor: '#6b7280'
+          });
 
-      await Swal.fire({
-        icon: 'success',
-        title: 'Analysis Saved!',
-        text: 'Your analysis has been saved successfully.',
-        timer: 2000,
-        showConfirmButton: false,
-        background: '#ffffff',
-        color: '#1f2937'
-      });
+          // If user chooses to sign up, redirect to home
+          if (result.isConfirmed) {
+            window.location.href = '/';
+          }
+        } else {
+          throw new Error('Failed to save analysis to local storage');
+        }
+      } else {
+        // Authenticated user - save to backend
+        await createAnalysis(analysisData);
+
+        await Swal.fire({
+          icon: 'success',
+          title: 'Analysis Saved!',
+          text: 'Your analysis has been saved to your account.',
+          timer: 2000,
+          showConfirmButton: false,
+          background: '#ffffff',
+          color: '#1f2937'
+        });
+      }
     } catch (error) {
       console.error('Manual save failed:', error);
       await Swal.fire({

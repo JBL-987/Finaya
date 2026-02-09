@@ -1,7 +1,7 @@
-import { TrendingUp, Users, DollarSign, Calculator, MapPin, Save, X, Brain, Download } from 'lucide-react';
+import { TrendingUp, Users, DollarSign, Calculator, MapPin, Save, X, Brain, FileSpreadsheet } from 'lucide-react';
 import { formatCurrency } from '../services/currencies';
 import { useCurrency } from '../contexts/CurrencyContext';
-import { usePDFExport } from '../hooks/usePDFExport';
+import { useExcelExport } from '../hooks/useExcelExport';
 
 const ResultsPanel = ({
   analysisResults,
@@ -11,9 +11,29 @@ const ResultsPanel = ({
   onSave
 }) => {
   const { selectedCurrency } = useCurrency();
-  const { exportPDF, isExporting } = usePDFExport();
+  const { exportToExcel, isExporting } = useExcelExport();
 
   if (!showResults || !analysisResults) return null;
+
+  const handleExcelExport = async () => {
+    console.log('Excel Export clicked!');
+    console.log('Analysis data:', analysisResults);
+    
+    try {
+      const filename = `Finaya_Analysis_${analysisResults.id || 'Draft'}`;
+      const result = await exportToExcel(analysisResults, filename);
+      
+      if (result && !result.success) {
+        console.error('Export failed:', result.error);
+        alert('Failed to export Excel. Check console for details.');
+      } else {
+        console.log('Export success!');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Export error: ' + error.message);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -26,14 +46,16 @@ const ResultsPanel = ({
               Comprehensive Business Analysis
             </h3>
             <div className="flex items-center space-x-2">
+              {/* Export to Excel Button */}
               <button
-                onClick={() => exportPDF('analysis-report', `Finaya_Report_${analysisResults.id || 'Draft'}.pdf`)}
+                onClick={handleExcelExport}
                 disabled={isExporting}
                 className="rounded-full bg-neutral-900 text-white border border-yellow-400/50 transition-all duration-300 ease-out transform hover:scale-105 hover:bg-yellow-400 hover:text-black flex items-center justify-center gap-2 px-4 py-2 font-medium shadow-lg hover:shadow-xl text-sm"
               >
-                {isExporting ? <span className="animate-spin">⏳</span> : <Download className="h-4 w-4" />}
-                <span>{isExporting ? 'Generating...' : 'Export Report'}</span>
+                {isExporting ? <span className="animate-spin">⏳</span> : <FileSpreadsheet className="h-4 w-4" />}
+                <span>{isExporting ? 'Exporting...' : 'Export to Excel'}</span>
               </button>
+
               <button
                 onClick={onSave}
                 className="rounded-full bg-yellow-600 text-white border border-transparent transition-all duration-300 ease-out transform hover:scale-105 hover:bg-white hover:text-yellow-600 hover:border-yellow-600 flex items-center justify-center gap-2 px-4 py-2 font-medium shadow-lg hover:shadow-xl text-sm"
