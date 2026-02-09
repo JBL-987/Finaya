@@ -381,34 +381,13 @@ const BusinessAnalysisApp = () => {
       };
 
       if (!currentUser) {
-        // Guest mode - save to localStorage
+        // Guest mode - save to localStorage (silently, no alert as requested)
         const savedAnalysis = saveGuestAnalysis(analysisData);
         
-        if (savedAnalysis) {
-          const result = await Swal.fire({
-            icon: 'info',
-            title: 'Analysis Saved Temporarily',
-            html: `
-              <p>Your analysis has been saved to your browser.</p>
-              <p class="text-sm text-gray-600 mt-2">💡 <strong>Guest Mode:</strong> Your data is stored locally and will be lost if you clear your browser data.</p>
-              <p class="text-sm text-yellow-600 mt-2">✨ <strong>Sign up for a free account</strong> to save your analyses permanently!</p>
-            `,
-            showCancelButton: true,
-            confirmButtonText: 'Sign Up Now',
-            cancelButtonText: 'Continue as Guest',
-            background: '#ffffff',
-            color: '#1f2937',
-            confirmButtonColor: '#d97706',
-            cancelButtonColor: '#6b7280'
-          });
-
-          // If user chooses to sign up, redirect to home
-          if (result.isConfirmed) {
-            window.location.href = '/';
-          }
-        } else {
+        if (!savedAnalysis) {
           throw new Error('Failed to save analysis to local storage');
         }
+        // Saved successfully in guest mode - no alert shown per user request
       } else {
         // Authenticated user - save to backend
         await createAnalysis(analysisData);

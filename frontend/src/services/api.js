@@ -116,6 +116,13 @@ export const authAPI = {
   },
 
   getCurrentUser: async () => {
+    // Check for guest mode - skip API call
+    const token = localStorage.getItem('access_token');
+    if (token === 'guest-token') {
+      logger.log('Guest mode: Skipping getCurrentUser API call');
+      return null;
+    }
+    
     try {
       const response = await api.get('/auth/me');
       return response.data;
@@ -291,6 +298,13 @@ export const analysisAPI = {
 // ============= Agent API =============
 export const agentAPI = {
   getAdvice: async (query, contextData, history = []) => {
+    // Check for guest mode - return graceful error
+    const token = localStorage.getItem('access_token');
+    if (token === 'guest-token') {
+      logger.log('Guest mode: AI Advisor is not available without authentication');
+      throw new Error('AI Advisor requires authentication. Please sign in or create an account to use this feature.');
+    }
+    
     const response = await api.post('/agent/advise', {
       query: query,
       context_data: contextData,
