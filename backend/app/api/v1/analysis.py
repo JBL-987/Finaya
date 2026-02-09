@@ -99,12 +99,11 @@ async def get_user_analyses(
 @router.post("/calculate", response_model=Dict[str, Any])
 async def calculate_analysis(
     request: CalculateRequest,
-    current_user = None
-    # current_user: User = Depends(get_current_user_optional)
+    current_user: User = Depends(get_current_user_optional)
 ):
     """Perform full business analysis calculation and save to DB"""
     try:
-        area_distribution = await analyze_location_image(
+        area_distribution, raw_response = await analyze_location_image(
             request.screenshot_base64,
             request.screenshot_metadata
         )
@@ -172,8 +171,7 @@ async def calculate_analysis(
 @router.post("/analyze", response_model=Dict[str, Any])
 async def analyze_only(
     request: CalculateRequest,
-    current_user = None
-    # current_user: User = Depends(get_current_user_optional)
+    current_user: User = Depends(get_current_user_optional)
 ):
     """Perform business analysis calculation without saving to DB"""
     try:

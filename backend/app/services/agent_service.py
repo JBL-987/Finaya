@@ -12,24 +12,42 @@ from google.genai import types
 
 class FinayaAgent:
     def __init__(self):
-        # Configure Gemini Client (v1 SDK)
         self.api_key = settings.GEMINI_API_KEY
-        self.model_name = settings.GEMINI_MODEL
+        self.model_name = settings.GEMINI_MODEL or "gemini-2.0-flash"
+        self.client = None
+        self.legacy_client = None
+        self.use_legacy = False
+
+        if not self.api_key:
+            print("⚠️ GEMINI_API_KEY not found. Agent features will be disabled.")
+            return
+
+        # Try initializing Google Gen AI SDK v0 (google.generativeai) first as it is more stable in this env
         try:
-            if self.api_key:
-                self.client = genai.Client(api_key=self.api_key)
-            else:
-                print("⚠️ GEMINI_API_KEY not found. Agent features will be disabled.")
-                self.client = None
+            import google.generativeai as genai
+            genai.configure(api_key=self.api_key)
+            self.legacy_client = genai.GenerativeModel(self.model_name)
+            self.use_legacy = True
+            print("✅ Initialized Gemini using Legacy SDK (google.generativeai)")
+        except ImportError:
+            print("⚠️ Legacy SDK not found, trying new SDK...")
         except Exception as e:
-             print(f"❌ Failed to initialize Gemini Client: {e}")
-             self.client = None
-        
+            print(f"❌ Failed to initialize Legacy SDK: {e}")
+
+        # If legacy failed, try new SDK v1 (google.genai)
+        if not self.use_legacy:
+            try:
+                from google import genai
+                self.client = genai.Client(api_key=self.api_key)
+                print("✅ Initialized Gemini using New SDK (google.genai)")
+            except Exception as e:
+                print(f"❌ Failed to initialize New SDK: {e}")
+                print("❌ FinayaAgent logic will be disabled.")
+
     def _format_competitors(self, competitors: List[Dict[str, Any]]) -> str:
         if not competitors:
             return "No data available."
         
-        # Take top 20, sort by rating/reviews if possible, but they usually come sorted by prominence
         formatted = []
         for c in competitors[:20]:
             params = f"{c.get('name')} (Rating: {c.get('rating')}⭐, {c.get('user_ratings_total')} reviews)"
@@ -37,9 +55,6 @@ class FinayaAgent:
         return ", ".join(formatted)
 
     async def _web_search(self, query: str) -> str:
-        """
-        Performs a Google Search using the Custom Search JSON API.
-        """
         if not settings.GOOGLE_SEARCH_API_KEY or not settings.GOOGLE_SEARCH_CX:
             return "Web Search Unavailable (API Key/CX not configured)."
 
@@ -49,7 +64,7 @@ class FinayaAgent:
                 "key": settings.GOOGLE_SEARCH_API_KEY,
                 "cx": settings.GOOGLE_SEARCH_CX,
                 "q": query,
-                "num": 5  # Fetch top 5 results
+                "num": 5
             }
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(url, params=params)
@@ -65,16 +80,13 @@ class FinayaAgent:
                         results.append(f"- **{item.get('title')}**: {item.get('snippet')} ({item.get('link')})")
                     return "\n".join(results)
                 else:
-                    return f"Search Error: {resp.status_code} - {resp.text}"
+                    return f"Search Error: {resp.status_code}"
         except Exception as e:
             return f"Search Exception: {str(e)}"
 
     async def generate_executive_summary(self, context_data: Dict[str, Any]) -> str:
-        """
-        Generates a formal investor-ready Executive Summary.
-        """
-        if not self.client:
-            return "Executive Summary Unavailable (AI Agent disabled due to missing API Key)."
+        if not self.client and not self.legacy_client:
+            return "Executive Summary Unavailable (AI Agent disabled)."
 
         metrics = context_data.get("metrics", {})
         risk_score = metrics.get("riskScore", 0.5)
@@ -92,137 +104,107 @@ class FinayaAgent:
         - Risk score (0–1): {risk_score}
 
         TASK:
-        """
-        # (Truncated prompt content for brevity in tool call, normally would be full)
-        prompt += """
-        Write a concise, professional executive summary suitable for:
-        - Bank loan proposal
-        - Angel investor pitch
-        - Franchise feasibility report
-
+        Write a concise executive summary for an investor pitch.
+        
         OUTPUT REQUIREMENTS:
-        1. Tone: Professional, confident, neutral (no hype)
+        1. Tone: Professional, confident, neutral
         2. Length: 2–3 short paragraphs
-        3. Structure:
-           - Paragraph 1: Market opportunity overview
-           - Paragraph 2: Key strengths and risks
-           - Final line: CLEAR decision recommendation
-
+        3. Structure: 
+           - Market opportunity
+           - Key strengths/risks
+           - CLEAR RECOMMENDATION (GO / CONSIDER WITH CAUTION / NOT RECOMMENDED)
+        
         DECISION RULE:
-        - If risk_score < 0.4 -> Recommendation: "GO"
-        - If 0.4 <= risk_score <= 0.6 -> Recommendation: "CONSIDER WITH CAUTION"
-        - If risk_score > 0.6 -> Recommendation: "NOT RECOMMENDED"
-
-        FINAL LINE FORMAT (MANDATORY):
-        Decision Recommendation: GO / CONSIDER WITH CAUTION / NOT RECOMMENDED
-
-        Do NOT include bullet points.
-        Do NOT mention AI, models, or assumptions.
+        - Risk < 0.4: GO
+        - 0.4 <= Risk <= 0.6: CONSIDER WITH CAUTION
+        - Risk > 0.6: NOT RECOMMENDED
         """
         
         try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt
-            )
-            return response.text
+            if self.use_legacy:
+                response = self.legacy_client.generate_content(prompt)
+                return response.text
+            else:
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt
+                )
+                return response.text
         except Exception as e:
             return f"Error generating summary: {str(e)}"
 
     async def simulate_competitor_impact(self, current_data: Dict[str, Any], new_competitor: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Simulates the impact of a new hypothetical competitor.
-        """
-        if not self.client:
-            return {"error": "AI Agent disabled due to missing API Key"}
+        if not self.client and not self.legacy_client:
+            return {"error": "AI Agent disabled"}
 
         prompt = f"""
-        You are a strategic market analyst.
+        Simulate impact of new competitor.
+        Current Density: {current_data.get('competitor_density')}
+        New Competitor: {new_competitor.get('brand_type')} at {new_competitor.get('distance')}m
 
-        SCENARIO:
-        A new hypothetical competitor is planned near the target location.
-
-        CURRENT DATA:
-        - Current competitor density: {current_data.get('competitor_density')}
-        - Current estimated market share: {current_data.get('market_share', 100)}%
-        - Current risk score: {current_data.get('risk_score')}
-
-        NEW COMPETITOR DETAILS:
-        - Brand type: {new_competitor.get('brand_type')}
-        - Distance from target location: {new_competitor.get('distance')} meters
-        - Estimated brand strength: {new_competitor.get('strength')}
-
-        TASK:
-        Simulate the impact of this new competitor on the existing business.
-
-        OUTPUT FORMAT (JSON ONLY):
+        Output JSON only:
         {{
-          "adjusted_competitor_density": "low|medium|high",
+          "adjusted_competitor_density": "string",
           "estimated_market_share_loss_percentage": number,
           "new_risk_score": number,
-          "impact_summary": "Short explanation of how and why the new competitor affects the business"
+          "impact_summary": "string"
         }}
         """
         
         try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json")
-            )
-            return json.loads(response.text)
+            if self.use_legacy:
+                response = self.legacy_client.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+                return json.loads(response.text)
+            else:
+                from google.genai import types
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(response_mime_type="application/json")
+                )
+                return json.loads(response.text)
         except Exception as e:
             return {"error": str(e)}
 
     async def analyze_competitor_sentiment(self, reviews_text: str) -> Dict[str, Any]:
-        """
-        Analyzes sentiment from competitor reviews to find market gaps.
-        """
-        if not self.client:
-            return {"error": "AI Agent disabled due to missing API Key"}
+        if not self.client and not self.legacy_client:
+            return {"error": "AI Agent disabled"}
 
         prompt = f"""
-        You are a market intelligence analyst.
-
-        INPUT:
+        Analyze reviews:
         {reviews_text}
 
-        TASK:
-        Analyze customer sentiment to identify:
-        1. Recurring complaints
-        2. Frequently praised features
-        3. Operational weaknesses
-
-        OUTPUT FORMAT (JSON ONLY):
+        Output JSON only:
         {{
-          "top_complaints": ["phrase"],
-          "top_strengths": ["phrase"],
-          "market_gap_opportunities": ["opportunity"],
-          "summary_insight": "paragraph"
+          "top_complaints": ["string"],
+          "top_strengths": ["string"],
+          "market_gap_opportunities": ["string"],
+          "summary_insight": "string"
         }}
         """
         try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json")
-            )
-            return json.loads(response.text)
+            if self.use_legacy:
+                response = self.legacy_client.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+                return json.loads(response.text)
+            else:
+                from google.genai import types
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(response_mime_type="application/json")
+                )
+                return json.loads(response.text)
         except Exception as e:
             return {"error": str(e)}
 
     async def run_advisor_task(self, query: str, context_data: Dict[str, Any], history: List[Any] = [], user_id: Optional[str] = None) -> str:
-        """
-        AI Business Advisor: Answers questions based on the analysis results.
-        """
-        if not self.client:
+        if not self.client and not self.legacy_client:
              return "I apologize, but I am currently disabled because the AI Engine API Key is missing."
 
-        # 0. Fetch User History Context (if user_id provided)
+        # 0. Fetch User History Context
         user_history_context = ""
         if user_id:
             try:
-                # Lazy import to avoid circular dependency
                 from app.services.analysis_service import AnalysisService
                 service = AnalysisService()
                 analyses = await service.get_user_analyses(user_id)
@@ -231,8 +213,8 @@ class FinayaAgent:
                     for a in analyses[:3]:
                          summary_list.append(f"- {a.name}: Score {a.data.get('metrics', {}).get('locationScore', 'N/A')}")
                     user_history_context = "\nUSER'S PAST ANALYSES:\n" + "\n".join(summary_list)
-            except Exception as e:
-                print(f"Failed to fetch user history: {e}")
+            except Exception:
+                pass
 
         # 1. Perform Web Search
         search_query = f"{query} {context_data.get('location_name', '')}"
@@ -257,42 +239,69 @@ class FinayaAgent:
         Answer the user's question strategically. Use the search results to back up your claims.
         """
         
-        # Build Chat History for SDK v1
-        # SDK v1 expects 'role' and 'parts' (list of strings/content)
-        chat_history = []
-        
-        # Add system context as the first user message (common pattern since system instructions are separate in v1 config, but this works universally)
-        chat_history.append(types.Content(role="user", parts=[types.Part.from_text(text=system_prompt)]))
-        chat_history.append(types.Content(role="model", parts=[types.Part.from_text(text="I am ready to advise based on the data provided.")]))
-
-        for msg in history:
-            role = getattr(msg, 'role', msg.get('role', 'user'))
-            text = getattr(msg, 'text', msg.get('text', ''))
-            
-            # Map 'system' role to 'user' if it leaks into history, though shouldn't happen
-            if role == "system": role = "user"
-            
-            chat_history.append(types.Content(role=role, parts=[types.Part.from_text(text=text)]))
-
         try:
-            # Create a chat session
-            chat = self.client.chats.create(
-                model=self.model_name,
-                history=chat_history,
-                config=types.GenerateContentConfig(temperature=0.7)
-            )
-            
-            response = chat.send_message(query)
-            return response.text
+            if self.use_legacy:
+                # Build history for legacy SDK
+                # Legacy SDK expects [{'role': 'user'|'model', 'parts': ['text']}]
+                chat_history = []
+                
+                # 1. System Prompt (as User)
+                chat_history.append({'role': 'user', 'parts': [system_prompt]})
+                
+                # 2. Check first message in history
+                if history:
+                    # Get role of first message safely
+                    first_msg = history[0]
+                    first_role = getattr(first_msg, 'role', None) or first_msg.get('role', 'user')
+                    if first_role == 'assistant': first_role = 'model'
+                    
+                    # If first historic message is User, we need a Model message before it to maintain alternation
+                    if first_role == 'user':
+                        chat_history.append({'role': 'model', 'parts': ["I understand the context. Please proceed."]})
+                
+                # 3. Append History
+                for msg in history:
+                     role = getattr(msg, 'role', None) or msg.get('role', 'user')
+                     text = getattr(msg, 'text', None) or msg.get('text', '')
+                     if role == 'assistant': role = 'model'
+                     
+                     chat_history.append({'role': role, 'parts': [text]})
+                
+                # 4. Start Chat
+                chat = self.legacy_client.start_chat(history=chat_history)
+                
+                # 5. Send Query
+                response = chat.send_message(query)
+                return response.text
+
+            else:
+                from google.genai import types
+                
+                chat_history = []
+                chat_history.append(types.Content(role="user", parts=[types.Part.from_text(text=system_prompt)]))
+                chat_history.append(types.Content(role="model", parts=[types.Part.from_text(text="I am ready to advise.")]))
+
+                for msg in history:
+                    role = getattr(msg, 'role', msg.get('role', 'user'))
+                    text = getattr(msg, 'text', msg.get('text', ''))
+                    if role == "system": role = "user"
+                    chat_history.append(types.Content(role=role, parts=[types.Part.from_text(text=text)]))
+
+                chat = self.client.chats.create(
+                    model=self.model_name,
+                    history=chat_history,
+                    config=types.GenerateContentConfig(temperature=0.7)
+                )
+                
+                response = chat.send_message(query)
+                return response.text
+                
         except Exception as e:
             print(f"Agent Task Error: {e}")
             return f"I apologize, but I encountered an error: {str(e)}"
 
     async def autonomous_search_suggestion(self, current_lat: float, current_lng: float, params: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """
-        Simulated Autonomous Exploration Suggestion.
-        """
-        if not self.client:
+        if not self.client and not self.legacy_client:
             return []
 
         prompt = f"""
@@ -307,12 +316,17 @@ class FinayaAgent:
         """
         
         try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json")
-            )
-            return json.loads(response.text)
+            if self.use_legacy:
+                response = self.legacy_client.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+                return json.loads(response.text)
+            else:
+                from google.genai import types
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(response_mime_type="application/json")
+                )
+                return json.loads(response.text)
         except:
             return []
 

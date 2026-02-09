@@ -50,7 +50,7 @@ api.interceptors.request.use(
     
     // Fallback to localStorage token (for backward compatibility)
     const token = localStorage.getItem('access_token');
-    if (token && token.trim()) {
+    if (token && token.trim() && token !== 'guest-token') {
       config.headers.Authorization = `Bearer ${token}`;
     }
     
@@ -298,11 +298,12 @@ export const analysisAPI = {
 // ============= Agent API =============
 export const agentAPI = {
   getAdvice: async (query, contextData, history = []) => {
-    // Check for guest mode - return graceful error
+    // Guest mode is now allowed
+    
+    // Check for guest mode to log but proceed
     const token = localStorage.getItem('access_token');
     if (token === 'guest-token') {
-      logger.log('Guest mode: AI Advisor is not available without authentication');
-      throw new Error('AI Advisor requires authentication. Please sign in or create an account to use this feature.');
+      logger.log('Guest mode: AI Advisor accessed anonymously');
     }
     
     const response = await api.post('/agent/advise', {

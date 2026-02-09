@@ -239,18 +239,7 @@ const ResultsPanel = ({
                 </div>
               </div>
 
-              {/* AI Reasoning */}
-              {analysisResults.areaDistribution?.reasoning && (
-                <div className="bg-neutral-900/50 p-4 rounded-xl border border-neutral-800">
-                  <h4 className="font-bold text-white mb-4 text-sm flex items-center uppercase tracking-widest">
-                    <Brain className="h-4 w-4 mr-2 text-yellow-400" />
-                    AI Analysis Reasoning
-                  </h4>
-                  <p className="text-sm text-gray-300 leading-relaxed italic border-l-2 border-yellow-600 pl-4 py-1">
-                    "{analysisResults.areaDistribution.reasoning}"
-                  </p>
-                </div>
-              )}
+
             </div>
           </div>
         </div>

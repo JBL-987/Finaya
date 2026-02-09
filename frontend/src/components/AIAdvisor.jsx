@@ -26,16 +26,7 @@ const AIAdvisor = ({ analysisData, businessParams }) => {
       
       hasInitialized.current = true;
       
-      // Check for guest mode
-      const token = localStorage.getItem('access_token');
-      if (token === 'guest-token') {
-        setMessages([{
-          role: 'assistant',
-          content: "👋 **Welcome to Finaya's AI Advisor!**\n\nI'm here to provide strategic insights and recommendations for your business locations.\n\nUnfortunately, **AI Advisor is only available for registered users**. To access this powerful feature:\n\n✅ **Sign in** to your account, or\n✅ **Create a free account** to get started\n\nOnce you're logged in, I'll be able to:\n- Analyze your location data\n- Provide strategic recommendations\n- Answer questions about competitors\n- Suggest improvements\n\nLooking forward to helping you make data-driven decisions! 🚀",
-          type: 'guest_info'
-        }]);
-        return;
-      }
+      // Guest mode allowed
       
       setIsLoading(true);
 
@@ -80,7 +71,8 @@ const AIAdvisor = ({ analysisData, businessParams }) => {
     };
 
     if (analysisData) {
-      generateInitialAdvice();
+      // Disabling auto-generation as per user request to remove "AI Reasoning" by default
+      // generateInitialAdvice();
     }
   }, [analysisData, businessParams]);
 
@@ -90,21 +82,6 @@ const AIAdvisor = ({ analysisData, businessParams }) => {
 
     const userMessage = input.trim();
     setInput('');
-    
-    // Check for guest mode
-    const token = localStorage.getItem('access_token');
-    if (token === 'guest-token') {
-      setMessages(prev => [
-        ...prev, 
-        { role: 'user', content: userMessage },
-        { 
-          role: 'assistant', 
-          content: "🔒 **AI Advisor is a premium feature**\n\nTo interact with me and get personalized strategic advice, please:\n\n✅ **Sign in** to your existing account\n✅ **Create a free account** if you're new\n\nI'm here to help you make smarter business decisions! 💡",
-          type: 'guest_reminder'
-        }
-      ]);
-      return;
-    }
     
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);

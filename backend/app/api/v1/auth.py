@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from ...schemas.schemas import UserCreate, User, Token, FirebaseLogin
@@ -7,9 +7,29 @@ from ...core.security import SecurityManager
 from ...core.exceptions import AuthenticationError, ValidationError, DatabaseError
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+router = APIRouter()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme)) -> Optional[User]:
+    """Get current user information if available, otherwise return None"""
+    print(f"DEBUG: get_current_user_optional called. Token: {token}")  # Added debug logging
+    if not token or token == 'guest-token':
+        print("DEBUG: Token is missing or guest-token. Returning None.")
+        return None
+    
+    try:
+        # Reuse the logic but return None instead of raising
+        from firebase_admin import auth as firebase_auth
+        decoded_token = firebase_auth.verify_id_token(token)
+        email = decoded_token.get('email')
+        if not email: return None
+        
+        user_service = UserService()
+        return await user_service.get_user_by_email(email)
+    except Exception:
+        return None
 
 @router.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate):
@@ -164,21 +184,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
             detail="An error occurred while fetching user data"
         )
 
-async def get_current_user_optional(token: str = Depends(oauth2_scheme)):
-    """Get current user information from Firebase token, but don't fail if no token"""
-    try:
-        from firebase_admin import auth as firebase_auth
-        decoded_token = firebase_auth.verify_id_token(token)
-        email = decoded_token.get('email')
-        
-        if not email:
-            return None
 
-        user_service = UserService()
-        user = await user_service.get_user_by_email(email)
-        return user
-    except Exception:
-        return None
 
 @router.get("/currency-preferences")
 async def get_currency_preferences(current_user: User = Depends(get_current_user)):
